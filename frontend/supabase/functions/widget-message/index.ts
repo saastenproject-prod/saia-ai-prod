@@ -80,18 +80,25 @@ type WidgetMessageRequest = {
   customerEmail?: string;
 };
 
-type AiReplyResult = {
+type N8nAiReplyResponse = {
   success?: boolean;
-  provider?: string;
-  model?: string;
-  conversationId?: string;
   answer?: string;
+  context_found?: boolean;
+  retrieved_count?: number;
   error?: string;
-  usedKnowledge?: {
-    articles?: number;
-    chunks?: number;
-  };
   [key: string]: unknown;
+};
+
+type AiReplyResult = {
+  success: boolean;
+  provider: "n8n_pinecone";
+  model: "pinecone_integrated_retrieval";
+  conversationId: string;
+  answer: string | null;
+  context_found: boolean;
+  retrieved_count: number;
+  error?: string | null;
+  raw?: N8nAiReplyResponse | null;
 };
 
 const corsHeaders = {
@@ -100,6 +107,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+const DEFAULT_N8N_AI_REPLY_URL =
+  "https://n8n-n8n.yemz6m.easypanel.host/webhook/widget-ai-reply";
 
 const createId = () => crypto.randomUUID();
 
@@ -154,60 +164,91 @@ const getMessageTextFromNode = (
   );
 };
 
-const triggerAiReply = async ({
-  supabaseUrl,
-  serviceRoleKey,
+const callN8nAiReply = async ({
+  n8nAiReplyUrl,
+  botId,
   conversationId,
   message,
 }: {
-  supabaseUrl: string;
-  serviceRoleKey: string;
+  n8nAiReplyUrl: string;
+  botId: string;
   conversationId: string;
   message: string;
-}) => {
-  let aiReplyTriggered = false;
-  let aiReplyResult: AiReplyResult | null = null;
-
+}): Promise<AiReplyResult> => {
   try {
-    const aiReplyResponse = await fetch(
-      `${supabaseUrl}/functions/v1/widget-ai-reply`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({
-          conversationId,
-          message,
-        }),
-      }
-    );
+    const response = await fetch(n8nAiReplyUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        bot_id: botId,
+        message,
+      }),
+    });
 
-    aiReplyResult = (await aiReplyResponse.json()) as AiReplyResult;
+    const rawText = await response.text();
 
-    aiReplyTriggered =
-      aiReplyResponse.ok && aiReplyResult?.success === true;
+    let parsed: N8nAiReplyResponse | null = null;
 
-    if (!aiReplyTriggered) {
-      console.warn("[widget-message] AI reply failed:", aiReplyResult);
+    try {
+      parsed = rawText ? (JSON.parse(rawText) as N8nAiReplyResponse) : null;
+    } catch {
+      parsed = {
+        success: false,
+        error: rawText || "Invalid JSON response from n8n.",
+      };
     }
-  } catch (aiReplyError) {
-    console.warn(
-      "[widget-message] AI reply request failed:",
-      getErrorMessage(aiReplyError)
-    );
 
-    aiReplyResult = {
+    if (!response.ok || parsed?.success === false) {
+      return {
+        success: false,
+        provider: "n8n_pinecone",
+        model: "pinecone_integrated_retrieval",
+        conversationId,
+        answer: null,
+        context_found: Boolean(parsed?.context_found),
+        retrieved_count: Number(parsed?.retrieved_count || 0),
+        error:
+          parsed?.error ||
+          `n8n AI reply request failed with status ${response.status}.`,
+        raw: parsed,
+      };
+    }
+
+    const answer =
+      typeof parsed?.answer === "string" && parsed.answer.trim()
+        ? parsed.answer.trim()
+        : "Maaf, saya belum menemukan jawaban yang sesuai.";
+
+    return {
+      success: true,
+      provider: "n8n_pinecone",
+      model: "pinecone_integrated_retrieval",
+      conversationId,
+      answer,
+      context_found: Boolean(parsed?.context_found),
+      retrieved_count: Number(parsed?.retrieved_count || 0),
+      error: null,
+      raw: parsed,
+    };
+  } catch (err) {
+    return {
       success: false,
-      error: getErrorMessage(aiReplyError),
+      provider: "n8n_pinecone",
+      model: "pinecone_integrated_retrieval",
+      conversationId,
+      answer: null,
+      context_found: false,
+      retrieved_count: 0,
+      error: getErrorMessage(err),
+      raw: null,
     };
   }
+};
 
-  return {
-    aiReplyTriggered,
-    aiReplyResult,
-  };
+const shouldStoreBotReply = (): boolean => {
+  return String(Deno.env.get("STORE_BOT_REPLY") || "").toLowerCase() === "true";
 };
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -220,6 +261,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method !== "POST") {
     return jsonResponse(
       {
+        success: false,
         error: "Method not allowed.",
       },
       405
@@ -229,11 +271,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const n8nAiReplyUrl =
+      Deno.env.get("N8N_AI_REPLY_URL") || DEFAULT_N8N_AI_REPLY_URL;
 
     if (!supabaseUrl || !serviceRoleKey) {
       return jsonResponse(
         {
+          success: false,
           error: "Missing Supabase server configuration.",
+        },
+        500
+      );
+    }
+
+    if (!n8nAiReplyUrl) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "Missing n8n AI reply URL.",
         },
         500
       );
@@ -250,9 +305,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const widgetKey = String(body.widgetKey || "").trim();
     const message = String(body.message || "").trim();
-    const existingConversationId = String(
-      body.conversationId || ""
-    ).trim();
+    const existingConversationId = String(body.conversationId || "").trim();
 
     const customerName = String(
       body.customerName || "Website Visitor"
@@ -265,6 +318,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (!widgetKey) {
       return jsonResponse(
         {
+          success: false,
           error: "widgetKey is required.",
         },
         400
@@ -274,6 +328,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (!message) {
       return jsonResponse(
         {
+          success: false,
           error: "message is required.",
         },
         400
@@ -303,6 +358,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (!widgetSetting) {
       return jsonResponse(
         {
+          success: false,
           error: "Active widget setting not found.",
         },
         404
@@ -320,6 +376,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (!bot || bot.status !== "active") {
       return jsonResponse(
         {
+          success: false,
           error: "Active bot not found.",
         },
         404
@@ -491,78 +548,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
               customer_intent: message,
               widget_key: widgetKey,
               flow_id: selectedFlow?.id || null,
+              greeting_preview: flowGreetingMessage,
+              greeting_stored_in_messages: false,
+              ai_reply_provider: "n8n_pinecone",
             },
           })
-          .select()
+          .select(
+            `
+            id,
+            workspace_id,
+            bot_id,
+            channel_id,
+            flow_id,
+            customer_name,
+            customer_email,
+            channel_type,
+            status
+          `
+          )
           .single<Conversation>();
 
       if (conversationError) throw conversationError;
 
       conversation = insertedConversation;
-
-      const { error: insertMessagesError } = await supabase
-        .from("messages")
-        .insert([
-          {
-            id: createId(),
-            workspace_id: bot.workspace_id,
-            bot_id: bot.id,
-            conversation_id: conversation.id,
-            sender_type: "bot",
-            sender_profile_id: null,
-            sender_name: bot.name,
-            message_type: "text",
-            content: flowGreetingMessage,
-            metadata: {
-              source: "runtime_widget_edge_function",
-              flow_id: selectedFlow?.id || null,
-              greeting_source: selectedFlow?.id
-                ? "flow_builder"
-                : "widget_setting",
-            },
-            sent_at: new Date(now.getTime() - 1000).toISOString(),
-          },
-          {
-            id: createId(),
-            workspace_id: bot.workspace_id,
-            bot_id: bot.id,
-            conversation_id: conversation.id,
-            sender_type: "customer",
-            sender_profile_id: null,
-            sender_name: customerName || "Website Visitor",
-            message_type: "text",
-            content: message,
-            metadata: {
-              source: "runtime_widget_edge_function",
-              widget_key: widgetKey,
-            },
-            sent_at: now.toISOString(),
-          },
-        ]);
-
-      if (insertMessagesError) throw insertMessagesError;
     } else {
-      const { error: insertMessageError } = await supabase
-        .from("messages")
-        .insert({
-          id: createId(),
-          workspace_id: conversation.workspace_id,
-          bot_id: conversation.bot_id,
-          conversation_id: conversation.id,
-          sender_type: "customer",
-          sender_profile_id: null,
-          sender_name: conversation.customer_name || customerName,
-          message_type: "text",
-          content: message,
-          metadata: {
-            source: "runtime_widget_edge_function_follow_up",
-            widget_key: widgetKey,
-          },
-          sent_at: now.toISOString(),
-        });
-
-      if (insertMessageError) throw insertMessageError;
-
       const { error: updateConversationError } = await supabase
         .from("conversations")
         .update({
@@ -575,6 +584,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
             customer_intent: message,
             widget_key: widgetKey,
             last_widget_message_at: now.toISOString(),
+            ai_reply_provider: "n8n_pinecone",
           },
         })
         .eq("id", conversation.id)
@@ -583,21 +593,99 @@ Deno.serve(async (req: Request): Promise<Response> => {
       if (updateConversationError) throw updateConversationError;
     }
 
-    const { aiReplyTriggered, aiReplyResult } = await triggerAiReply({
-      supabaseUrl,
-      serviceRoleKey,
+    const { error: insertCustomerMessageError } = await supabase
+      .from("messages")
+      .insert({
+        id: createId(),
+        workspace_id: conversation.workspace_id,
+        bot_id: conversation.bot_id,
+        conversation_id: conversation.id,
+        sender_type: "customer",
+        sender_profile_id: null,
+        sender_name:
+          conversation.customer_name || customerName || "Website Visitor",
+        message_type: "text",
+        content: message,
+        metadata: {
+          source: isNewConversation
+            ? "runtime_widget_edge_function"
+            : "runtime_widget_edge_function_follow_up",
+          widget_key: widgetKey,
+        },
+        sent_at: now.toISOString(),
+      });
+
+    if (insertCustomerMessageError) throw insertCustomerMessageError;
+
+    const aiReplyResult = await callN8nAiReply({
+      n8nAiReplyUrl,
+      botId: bot.id,
       conversationId: conversation.id,
       message,
     });
+
+    let botMessageId: string | null = null;
+
+    if (aiReplyResult.success && aiReplyResult.answer && shouldStoreBotReply()) {
+      botMessageId = createId();
+
+      const botReplyNow = new Date();
+
+      const { error: insertBotMessageError } = await supabase
+        .from("messages")
+        .insert({
+          id: botMessageId,
+          workspace_id: conversation.workspace_id,
+          bot_id: conversation.bot_id,
+          conversation_id: conversation.id,
+          sender_type: "bot",
+          sender_profile_id: null,
+          sender_name: bot.name || widgetSetting.title || "Nexora Support",
+          message_type: "text",
+          content: aiReplyResult.answer,
+          metadata: {
+            source: "n8n_pinecone_ai_reply",
+            widget_key: widgetKey,
+            context_found: aiReplyResult.context_found,
+            retrieved_count: aiReplyResult.retrieved_count,
+            provider: aiReplyResult.provider,
+            model: aiReplyResult.model,
+          },
+          sent_at: botReplyNow.toISOString(),
+        });
+
+      if (insertBotMessageError) throw insertBotMessageError;
+
+      const { error: updateBotLastMessageError } = await supabase
+        .from("conversations")
+        .update({
+          last_message: aiReplyResult.answer,
+          last_message_at: botReplyNow.toISOString(),
+          updated_at: botReplyNow.toISOString(),
+        })
+        .eq("id", conversation.id)
+        .eq("bot_id", bot.id);
+
+      if (updateBotLastMessageError) throw updateBotLastMessageError;
+    }
 
     return jsonResponse({
       success: true,
       isNewConversation,
       conversationId: conversation.id,
-      botReply: isNewConversation ? flowGreetingMessage : null,
+
+      /*
+        Keep botReply null so the current widget does not render duplicate bot messages.
+        The widget should use aiReplyResult.answer.
+      */
+      botReply: null,
+
       customerMessage: message,
-      aiReplyTriggered,
-      aiReplyResult,
+      aiReplyTriggered: aiReplyResult.success,
+      aiReplyResult: {
+        ...aiReplyResult,
+        messageId: botMessageId,
+      },
     });
   } catch (err: unknown) {
     console.error("[widget-message error raw]", err);

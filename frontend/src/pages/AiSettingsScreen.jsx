@@ -11,6 +11,35 @@ const DEFAULT_ARTICLE_FORM = {
   status: "draft",
 };
 
+const arrayToText = (value) => {
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "string") return value;
+  return "";
+};
+
+const getDocumentExtension = (document) => {
+  return (
+    document?.metadata?.extension ||
+    document?.file_name?.split(".").pop()?.toLowerCase() ||
+    ""
+  );
+};
+
+const canIndexDocument = (document) => {
+  const extension = getDocumentExtension(document);
+
+  return (
+    extension === "txt" &&
+    ["uploaded", "indexed", "failed"].includes(document.status)
+  );
+};
+
+const isComingSoonDocument = (document) => {
+  const extension = getDocumentExtension(document);
+
+  return extension && extension !== "txt";
+};
+
 export default function AiSettingsScreen({ setScreen }) {
   const {
     loading,
@@ -33,6 +62,7 @@ export default function AiSettingsScreen({ setScreen }) {
 
     uploadKnowledgeDocument,
     indexTextKnowledgeDocument,
+    deleteKnowledgeDocument,
     refetch,
   } = useAiSettingsData();
 
@@ -74,6 +104,20 @@ export default function AiSettingsScreen({ setScreen }) {
       // Error sudah ditampilkan dari hook.
     } finally {
       setIndexingDocumentId(null);
+    }
+  };
+
+  const handleDeleteDocument = async (document) => {
+    const confirmed = window.confirm(
+      `Delete document "${document.file_name}"? This will also delete its indexed chunks.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteKnowledgeDocument(document);
+    } catch (err) {
+      // Error sudah ditampilkan dari hook.
     }
   };
 
@@ -207,6 +251,15 @@ export default function AiSettingsScreen({ setScreen }) {
     return "Knowledge coverage is still low. Upload documents or publish articles.";
   };
 
+  const settingInputClass =
+    "mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100";
+
+  const settingTextareaClass =
+    "mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 outline-none resize-none focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100";
+
+  const settingLabelClass =
+    "text-xs font-black uppercase tracking-wide text-slate-400";
+
   return (
     <div className="min-h-screen bg-[#F6F8FC] flex">
       <ChatbotSubnav setScreen={setScreen} activeMenu="ai-settings" />
@@ -216,7 +269,8 @@ export default function AiSettingsScreen({ setScreen }) {
           <div>
             <h1 className="font-black text-slate-950">AI Settings</h1>
             <p className="text-xs text-slate-500 mt-1">
-              Configure instructions, restrictions, knowledge, and AI behavior.
+              Configure structured behavior, instructions, restrictions,
+              knowledge, and AI runtime policy.
             </p>
           </div>
 
@@ -224,7 +278,7 @@ export default function AiSettingsScreen({ setScreen }) {
             <button
               type="button"
               onClick={refetch}
-              className="h-10 px-4 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700"
+              className="h-10 px-4 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition"
             >
               Refresh Data
             </button>
@@ -232,7 +286,7 @@ export default function AiSettingsScreen({ setScreen }) {
             <button
               type="button"
               onClick={() => setScreen("builder")}
-              className="h-10 px-4 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700"
+              className="h-10 px-4 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition"
             >
               Open Builder
             </button>
@@ -241,7 +295,7 @@ export default function AiSettingsScreen({ setScreen }) {
               type="button"
               onClick={handleSaveSettings}
               disabled={savingSettings || loading}
-              className="h-10 px-4 rounded-2xl bg-blue-600 text-white text-sm font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+              className="h-10 px-4 rounded-2xl bg-blue-600 text-white text-sm font-bold disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700 transition"
             >
               {savingSettings ? "Saving..." : saveStatus || "Save Settings"}
             </button>
@@ -266,13 +320,13 @@ export default function AiSettingsScreen({ setScreen }) {
                 </div>
 
                 <h2 className="text-4xl font-black tracking-tight text-white">
-                  BotPenguin-style AI control center.
+                  Behavioral AI control center.
                 </h2>
 
                 <p className="mt-3 text-blue-100 leading-7">
-                  Configure AI identity, instructions, restrictions, response
-                  behavior, knowledge documents, and manual articles for this
-                  chatbot.
+                  Manage structured AI identity, behavior configuration,
+                  knowledge policy, custom instructions, guardrails, handoff
+                  rules, and knowledge sources.
                 </p>
               </div>
             </div>
@@ -337,52 +391,58 @@ export default function AiSettingsScreen({ setScreen }) {
           <section className="grid xl:grid-cols-[1fr_420px] gap-5">
             <div className="space-y-5">
               <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-black text-slate-950">
-                  AI Identity
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Define the assistant identity, tone, language, and role.
-                </p>
+                <div className="flex items-start justify-between gap-5">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">
+                      AI Identity
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Define the assistant name, company context, language,
+                      tone, and role summary.
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
+                    Basic Identity
+                  </span>
+                </div>
 
                 <div className="mt-6 grid md:grid-cols-2 gap-5">
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      AI Name
-                    </span>
+                    <span className={settingLabelClass}>AI Name</span>
                     <input
                       value={settings.ai_name || ""}
                       onChange={(event) =>
                         updateSettingField("ai_name", event.target.value)
                       }
-                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-blue-100"
+                      className={settingInputClass}
                       placeholder="Customer Support AI"
                     />
                   </label>
 
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Company Name
-                    </span>
+                    <span className={settingLabelClass}>Company Name</span>
                     <input
                       value={settings.company_name || ""}
                       onChange={(event) =>
                         updateSettingField("company_name", event.target.value)
                       }
-                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-blue-100"
+                      className={settingInputClass}
                       placeholder="Saasten"
                     />
                   </label>
 
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Default Language
-                    </span>
+                    <span className={settingLabelClass}>Default Language</span>
                     <select
                       value={settings.default_language || "id"}
                       onChange={(event) =>
-                        updateSettingField("default_language", event.target.value)
+                        updateSettingField(
+                          "default_language",
+                          event.target.value
+                        )
                       }
-                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
+                      className={settingInputClass}
                     >
                       <option value="id">Indonesian</option>
                       <option value="en">English</option>
@@ -391,15 +451,13 @@ export default function AiSettingsScreen({ setScreen }) {
                   </label>
 
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Tone
-                    </span>
+                    <span className={settingLabelClass}>Tone</span>
                     <select
                       value={settings.tone || "professional"}
                       onChange={(event) =>
                         updateSettingField("tone", event.target.value)
                       }
-                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
+                      className={settingInputClass}
                     >
                       <option value="professional">Professional</option>
                       <option value="friendly">Friendly</option>
@@ -411,18 +469,236 @@ export default function AiSettingsScreen({ setScreen }) {
                 </div>
 
                 <label className="block mt-5">
-                  <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                    Role Description
-                  </span>
+                  <span className={settingLabelClass}>Role Description</span>
                   <textarea
                     value={settings.role_description || ""}
                     onChange={(event) =>
                       updateSettingField("role_description", event.target.value)
                     }
-                    className="mt-2 h-24 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none resize-none focus:ring-4 focus:ring-blue-100"
+                    className={`${settingTextareaClass} h-24`}
                     placeholder="Customer support assistant..."
                   />
                 </label>
+              </div>
+
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-5">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">
+                      Structured Agent Identity
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      These fields make the AI behavior easier to reuse, debug,
+                      and scale across templates.
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-700">
+                    Structured Config
+                  </span>
+                </div>
+
+                <div className="mt-6 grid md:grid-cols-3 gap-5">
+                  <label className="block">
+                    <span className={settingLabelClass}>Agent Role</span>
+                    <input
+                      value={settings.agent_role || ""}
+                      onChange={(event) =>
+                        updateSettingField("agent_role", event.target.value)
+                      }
+                      className={settingInputClass}
+                      placeholder="HR Specialist"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className={settingLabelClass}>Department</span>
+                    <input
+                      value={settings.department || ""}
+                      onChange={(event) =>
+                        updateSettingField("department", event.target.value)
+                      }
+                      className={settingInputClass}
+                      placeholder="Human Resource"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className={settingLabelClass}>Primary Audience</span>
+                    <input
+                      value={settings.primary_audience || ""}
+                      onChange={(event) =>
+                        updateSettingField(
+                          "primary_audience",
+                          event.target.value
+                        )
+                      }
+                      className={settingInputClass}
+                      placeholder="Employee"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-5">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">
+                      Behavior Configuration
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Control how the AI should answer before the prompt
+                      compiler runs.
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
+                    Runtime Behavior
+                  </span>
+                </div>
+
+                <div className="mt-6 grid md:grid-cols-2 gap-5">
+                  <label className="block">
+                    <span className={settingLabelClass}>Response Style</span>
+                    <select
+                      value={settings.response_style || "Helpful and concise"}
+                      onChange={(event) =>
+                        updateSettingField("response_style", event.target.value)
+                      }
+                      className={settingInputClass}
+                    >
+                      <option value="Helpful and concise">
+                        Helpful and concise
+                      </option>
+                      <option value="Helpful and step-by-step">
+                        Helpful and step-by-step
+                      </option>
+                      <option value="Consultative and concise">
+                        Consultative and concise
+                      </option>
+                      <option value="Accurate and concise">
+                        Accurate and concise
+                      </option>
+                      <option value="Troubleshooting steps">
+                        Troubleshooting steps
+                      </option>
+                      <option value="Practical and friendly">
+                        Practical and friendly
+                      </option>
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className={settingLabelClass}>Empathy Level</span>
+                    <select
+                      value={settings.empathy_level || "Medium"}
+                      onChange={(event) =>
+                        updateSettingField("empathy_level", event.target.value)
+                      }
+                      className={settingInputClass}
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className={settingLabelClass}>Formality Level</span>
+                    <select
+                      value={settings.formality_level || "Professional"}
+                      onChange={(event) =>
+                        updateSettingField("formality_level", event.target.value)
+                      }
+                      className={settingInputClass}
+                    >
+                      <option value="Casual">Casual</option>
+                      <option value="Friendly Professional">
+                        Friendly Professional
+                      </option>
+                      <option value="Professional">Professional</option>
+                      <option value="Formal">Formal</option>
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className={settingLabelClass}>Knowledge Mode</span>
+                    <select
+                      value={
+                        settings.knowledge_mode || "Approved Knowledge Only"
+                      }
+                      onChange={(event) =>
+                        updateSettingField("knowledge_mode", event.target.value)
+                      }
+                      className={settingInputClass}
+                    >
+                      <option value="Strict Knowledge Only">
+                        Strict Knowledge Only
+                      </option>
+                      <option value="Approved Knowledge Only">
+                        Approved Knowledge Only
+                      </option>
+                      <option value="General AI + Approved Knowledge">
+                        General AI + Approved Knowledge
+                      </option>
+                    </select>
+                  </label>
+                </div>
+
+                <label className="block mt-5">
+                  <span className={settingLabelClass}>
+                    Unknown Answer Behavior
+                  </span>
+                  <textarea
+                    value={settings.unknown_answer_behavior || ""}
+                    onChange={(event) =>
+                      updateSettingField(
+                        "unknown_answer_behavior",
+                        event.target.value
+                      )
+                    }
+                    className={`${settingTextareaClass} h-24`}
+                    placeholder="Use fallback and offer handoff when needed."
+                  />
+                </label>
+
+                <div className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-5">
+                  <p className="text-sm font-black text-slate-950">
+                    Knowledge Mode Guidance
+                  </p>
+
+                  <div className="mt-3 grid md:grid-cols-3 gap-3 text-xs leading-5 text-slate-600">
+                    <div className="rounded-2xl bg-white/80 border border-blue-100 p-4">
+                      <p className="font-black text-slate-800">
+                        Strict Knowledge Only
+                      </p>
+                      <p className="mt-1">
+                        Best for HR, Finance, legal-sensitive, policy, payroll,
+                        and company-specific agents.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/80 border border-blue-100 p-4">
+                      <p className="font-black text-slate-800">
+                        Approved Knowledge Only
+                      </p>
+                      <p className="mt-1">
+                        Best for support, IT, e-commerce, and operational
+                        answers based on available knowledge.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/80 border border-blue-100 p-4">
+                      <p className="font-black text-slate-800">
+                        General AI + Knowledge
+                      </p>
+                      <p className="mt-1">
+                        Best for sales or consultative agents that can answer
+                        general questions but still restrict company facts.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -435,34 +711,36 @@ export default function AiSettingsScreen({ setScreen }) {
 
                 <div className="mt-6 space-y-5">
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Main Instruction
-                    </span>
+                    <span className={settingLabelClass}>Main Instruction</span>
                     <textarea
                       value={settings.main_instruction || ""}
                       onChange={(event) =>
-                        updateSettingField("main_instruction", event.target.value)
+                        updateSettingField(
+                          "main_instruction",
+                          event.target.value
+                        )
                       }
-                      className="mt-2 h-32 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none resize-none focus:ring-4 focus:ring-indigo-100"
+                      className={`${settingTextareaClass} h-32 focus:ring-indigo-100`}
                     />
                   </label>
 
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Business Context
-                    </span>
+                    <span className={settingLabelClass}>Business Context</span>
                     <textarea
                       value={settings.business_context || ""}
                       onChange={(event) =>
-                        updateSettingField("business_context", event.target.value)
+                        updateSettingField(
+                          "business_context",
+                          event.target.value
+                        )
                       }
-                      className="mt-2 h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none resize-none focus:ring-4 focus:ring-indigo-100"
+                      className={`${settingTextareaClass} h-28 focus:ring-indigo-100`}
                       placeholder="Explain company services, support policy, target customer, product scope..."
                     />
                   </label>
 
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    <span className={settingLabelClass}>
                       Restrictions / Larangan Agent & LLM
                     </span>
                     <textarea
@@ -470,24 +748,129 @@ export default function AiSettingsScreen({ setScreen }) {
                       onChange={(event) =>
                         updateSettingField("restrictions", event.target.value)
                       }
-                      className="mt-2 h-32 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none resize-none focus:ring-4 focus:ring-indigo-100"
+                      className={`${settingTextareaClass} h-32 focus:ring-indigo-100`}
                       placeholder="Jangan mengarang informasi. Jangan menjanjikan harga. Jangan menjawab di luar knowledge base..."
                     />
                   </label>
 
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Fallback Message
-                    </span>
+                    <span className={settingLabelClass}>Fallback Message</span>
                     <textarea
                       value={settings.fallback_message || ""}
                       onChange={(event) =>
                         updateSettingField("fallback_message", event.target.value)
                       }
-                      className="mt-2 h-24 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none resize-none focus:ring-4 focus:ring-indigo-100"
+                      className={`${settingTextareaClass} h-24 focus:ring-indigo-100`}
                     />
                   </label>
                 </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-5">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">
+                      Structured Guardrails
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Use comma-separated values. These are stored as JSON arrays
+                      and used directly by the runtime prompt compiler.
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700">
+                    Safety Rules
+                  </span>
+                </div>
+
+                <div className="mt-6 grid md:grid-cols-2 gap-5">
+                  <label className="block">
+                    <span className={settingLabelClass}>Forbidden Topics</span>
+                    <textarea
+                      value={arrayToText(settings.forbidden_topics)}
+                      onChange={(event) =>
+                        updateSettingField(
+                          "forbidden_topics",
+                          event.target.value
+                        )
+                      }
+                      className={`${settingTextareaClass} h-28`}
+                      placeholder="salary decision, legal advice, medical diagnosis"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className={settingLabelClass}>Sensitive Topics</span>
+                    <textarea
+                      value={arrayToText(settings.sensitive_topics)}
+                      onChange={(event) =>
+                        updateSettingField(
+                          "sensitive_topics",
+                          event.target.value
+                        )
+                      }
+                      className={`${settingTextareaClass} h-28`}
+                      placeholder="harassment, payroll dispute, termination"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className={settingLabelClass}>Escalation Topics</span>
+                    <textarea
+                      value={arrayToText(settings.escalation_topics)}
+                      onChange={(event) =>
+                        updateSettingField(
+                          "escalation_topics",
+                          event.target.value
+                        )
+                      }
+                      className={`${settingTextareaClass} h-28`}
+                      placeholder="pricing request, refund dispute, legal issue"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className={settingLabelClass}>Never Promise</span>
+                    <textarea
+                      value={arrayToText(settings.never_promise)}
+                      onChange={(event) =>
+                        updateSettingField("never_promise", event.target.value)
+                      }
+                      className={`${settingTextareaClass} h-28`}
+                      placeholder="salary increase, refund approval, delivery guarantee"
+                    />
+                  </label>
+                </div>
+
+                <label className="block mt-5">
+                  <span className={settingLabelClass}>Restricted Claims</span>
+                  <textarea
+                    value={arrayToText(settings.restricted_claims)}
+                    onChange={(event) =>
+                      updateSettingField(
+                        "restricted_claims",
+                        event.target.value
+                      )
+                    }
+                    className={`${settingTextareaClass} h-28`}
+                    placeholder="company policy not in approved knowledge, legal contract interpretation, guaranteed ROI"
+                  />
+                </label>
+
+                <label className="block mt-5">
+                  <span className={settingLabelClass}>Custom Instruction</span>
+                  <textarea
+                    value={settings.custom_instruction || ""}
+                    onChange={(event) =>
+                      updateSettingField(
+                        "custom_instruction",
+                        event.target.value
+                      )
+                    }
+                    className={`${settingTextareaClass} h-32`}
+                    placeholder="Add custom business behavior that is not covered by structured fields..."
+                  />
+                </label>
               </div>
 
               <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -497,42 +880,35 @@ export default function AiSettingsScreen({ setScreen }) {
 
                 <div className="mt-6 grid md:grid-cols-2 gap-5">
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Answer Length
-                    </span>
+                    <span className={settingLabelClass}>Answer Length</span>
                     <select
                       value={settings.answer_length || "medium"}
                       onChange={(event) =>
                         updateSettingField("answer_length", event.target.value)
                       }
-                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
+                      className={settingInputClass}
                     >
                       <option value="short">Short</option>
                       <option value="medium">Medium</option>
                       <option value="detailed">Detailed</option>
+                      <option value="long">Long</option>
                     </select>
                   </label>
 
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                      Handoff Target
-                    </span>
-                    <select
-                      value={settings.handoff_target || "support_agent"}
+                    <span className={settingLabelClass}>Handoff Target</span>
+                    <input
+                      value={settings.handoff_target || ""}
                       onChange={(event) =>
                         updateSettingField("handoff_target", event.target.value)
                       }
-                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
-                    >
-                      <option value="support_agent">Support Agent</option>
-                      <option value="sales_agent">Sales Agent</option>
-                      <option value="technical_agent">Technical Agent</option>
-                      <option value="general_queue">General Queue</option>
-                    </select>
+                      className={settingInputClass}
+                      placeholder="Support Agent, HR Team, Sales Team, Finance Team"
+                    />
                   </label>
 
                   <label className="block">
-                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    <span className={settingLabelClass}>
                       Confidence Threshold
                     </span>
                     <input
@@ -547,7 +923,7 @@ export default function AiSettingsScreen({ setScreen }) {
                           Number(event.target.value)
                         )
                       }
-                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
+                      className={settingInputClass}
                     />
                   </label>
                 </div>
@@ -569,7 +945,7 @@ export default function AiSettingsScreen({ setScreen }) {
                   ].map(([field, label]) => (
                     <label
                       key={field}
-                      className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 cursor-pointer"
+                      className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 cursor-pointer hover:bg-white transition"
                     >
                       <input
                         type="checkbox"
@@ -594,7 +970,9 @@ export default function AiSettingsScreen({ setScreen }) {
                       Knowledge Documents
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      Upload and index documents used by AI Agent nodes.
+                      Upload knowledge documents used by AI Agent. TXT indexing
+                      is available now. PDF, DOCX, CSV, and XLSX indexing are
+                      coming soon.
                     </p>
                   </div>
 
@@ -602,7 +980,7 @@ export default function AiSettingsScreen({ setScreen }) {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".pdf,.docx,.txt,.csv,.xlsx"
+                      accept=".txt"
                       className="hidden"
                       onChange={handleUploadFile}
                     />
@@ -611,10 +989,10 @@ export default function AiSettingsScreen({ setScreen }) {
                       type="button"
                       onClick={handleOpenFilePicker}
                       disabled={uploading}
-                      className="h-10 px-4 rounded-2xl bg-blue-600 text-white text-sm font-bold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="h-10 px-4 rounded-2xl bg-blue-600 text-white text-sm font-bold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700 transition"
                     >
                       <Plus size={16} />
-                      {uploading ? "Uploading..." : "Upload Document"}
+                      {uploading ? "Uploading..." : "Upload TXT"}
                     </button>
                   </div>
                 </div>
@@ -626,12 +1004,12 @@ export default function AiSettingsScreen({ setScreen }) {
                     </div>
 
                     <h3 className="mt-4 font-black text-slate-950">
-                      Drop files here or browse
+                      Drop TXT file here or browse
                     </h3>
 
                     <p className="mt-2 text-sm text-slate-500">
-                      Supported: PDF, DOCX, TXT, CSV, XLSX. Manual indexing
-                      currently supports TXT.
+                      AI indexing currently supports TXT files. PDF, DOCX, CSV,
+                      and XLSX support is coming soon.
                     </p>
                   </div>
 
@@ -652,15 +1030,15 @@ export default function AiSettingsScreen({ setScreen }) {
                       documents.map((doc) => (
                         <div
                           key={doc.id}
-                          className="p-5 flex items-center justify-between hover:bg-slate-50 transition"
+                          className="p-5 flex items-center justify-between gap-5 hover:bg-slate-50 transition"
                         >
-                          <div className="flex items-center gap-4">
-                            <div className="h-11 w-11 rounded-2xl bg-blue-50 text-blue-700 grid place-items-center">
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div className="h-11 w-11 rounded-2xl bg-blue-50 text-blue-700 grid place-items-center shrink-0">
                               <BookOpen size={19} />
                             </div>
 
-                            <div>
-                              <p className="font-black text-slate-950">
+                            <div className="min-w-0">
+                              <p className="font-black text-slate-950 truncate">
                                 {doc.file_name}
                               </p>
 
@@ -685,27 +1063,58 @@ export default function AiSettingsScreen({ setScreen }) {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            {doc.status === "uploaded" && (
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <div className="flex items-center gap-2">
+                              {canIndexDocument(doc) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleIndexDocument(doc)}
+                                  disabled={indexingDocumentId === doc.id}
+                                  className="h-8 px-3 rounded-xl bg-slate-950 text-white text-[11px] font-black disabled:opacity-60"
+                                >
+                                  {indexingDocumentId === doc.id
+                                    ? "Indexing..."
+                                    : doc.status === "indexed"
+                                    ? "Re-index"
+                                    : "Index"}
+                                </button>
+                              )}
+
+                              {isComingSoonDocument(doc) && (
+                                <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-black text-amber-700">
+                                  Indexing Soon
+                                </span>
+                              )}
+
                               <button
                                 type="button"
-                                onClick={() => handleIndexDocument(doc)}
-                                disabled={indexingDocumentId === doc.id}
-                                className="h-8 px-3 rounded-xl bg-slate-950 text-white text-[11px] font-black disabled:opacity-60"
+                                onClick={() => handleDeleteDocument(doc)}
+                                className="h-8 px-3 rounded-xl border border-red-100 bg-red-50 text-red-600 text-[11px] font-black hover:bg-red-100 transition"
                               >
-                                {indexingDocumentId === doc.id
-                                  ? "Indexing..."
-                                  : "Index"}
+                                Delete
                               </button>
-                            )}
 
-                            <span
-                              className={`rounded-full px-3 py-1 text-[11px] font-black ${getStatusClass(
-                                doc.status
-                              )}`}
-                            >
-                              {formatStatus(doc.status)}
-                            </span>
+                              <span
+                                className={`rounded-full px-3 py-1 text-[11px] font-black ${getStatusClass(
+                                  doc.status
+                                )}`}
+                              >
+                                {formatStatus(doc.status)}
+                              </span>
+                            </div>
+
+                            <p className="text-[11px] text-slate-400">
+                              {getDocumentExtension(doc)?.toUpperCase() ||
+                                "UNKNOWN"}{" "}
+                              ·{" "}
+                              {doc.status === "indexed"
+                                ? "Ready for AI"
+                                : doc.status === "processing"
+                                ? "Processing"
+                                : doc.status === "failed"
+                                ? "Needs attention"
+                                : "Awaiting indexing"}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -715,6 +1124,36 @@ export default function AiSettingsScreen({ setScreen }) {
             </div>
 
             <aside className="space-y-5">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-black text-slate-950">
+                  Runtime Summary
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Quick view of the active behavior configuration.
+                </p>
+
+                <div className="mt-5 space-y-3 text-sm">
+                  {[
+                    ["Agent Role", settings.agent_role || "-"],
+                    ["Department", settings.department || "-"],
+                    ["Audience", settings.primary_audience || "-"],
+                    ["Knowledge Mode", settings.knowledge_mode || "-"],
+                    ["Handoff Target", settings.handoff_target || "-"],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="flex justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    >
+                      <span className="text-slate-500">{label}</span>
+                      <span className="font-black text-slate-900 text-right">
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <form
                 onSubmit={handleCreateArticle}
                 className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm"
@@ -786,7 +1225,7 @@ export default function AiSettingsScreen({ setScreen }) {
                   <button
                     type="submit"
                     disabled={savingArticle}
-                    className="h-11 w-full rounded-2xl bg-emerald-600 text-white text-sm font-black disabled:opacity-60"
+                    className="h-11 w-full rounded-2xl bg-emerald-600 text-white text-sm font-black disabled:opacity-60 hover:bg-emerald-700 transition"
                   >
                     {savingArticle ? "Adding..." : "Add Article"}
                   </button>

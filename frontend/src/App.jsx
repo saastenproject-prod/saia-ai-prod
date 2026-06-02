@@ -13,6 +13,7 @@ import InboxScreen from "./pages/InboxScreen";
 import LoginScreen from "./pages/LoginScreen";
 import CreateChatbotScreen from "./pages/CreateChatbotScreen";
 import AllChatbotsScreen from "./pages/AllChatbotsScreen";
+import AgentMarketplaceScreen from "./pages/AgentMarketplaceScreen";
 
 import { supabase } from "./lib/supabaseClient";
 
@@ -52,43 +53,44 @@ export default function App() {
   }, []);
 
   const navigateToScreen = (nextScreen) => {
-  setScreen(nextScreen);
+    setScreen(nextScreen);
 
-  if (nextScreen === "home") {
-    setActive("home");
-    return;
-  }
+    if (nextScreen === "home") {
+      setActive("home");
+      return;
+    }
 
-  if (
-    nextScreen === "platform" ||
-    nextScreen === "usecase" ||
-    nextScreen === "create-chatbot" ||
-    nextScreen === "all-chatbots" ||
-    nextScreen === "flows" ||
-    nextScreen === "builder" ||
-    nextScreen === "install" ||
-    nextScreen === "ai-settings"
-  ) {
-    setActive("chatbot");
-    return;
-  }
+    if (
+      nextScreen === "platform" ||
+      nextScreen === "usecase" ||
+      nextScreen === "create-chatbot" ||
+      nextScreen === "all-chatbots" ||
+      nextScreen === "agent-marketplace" ||
+      nextScreen === "flows" ||
+      nextScreen === "builder" ||
+      nextScreen === "install" ||
+      nextScreen === "ai-settings"
+    ) {
+      setActive("chatbot");
+      return;
+    }
 
-  if (nextScreen === "inbox") {
-    setActive("inbox");
-    return;
-  }
+    if (nextScreen === "inbox") {
+      setActive("inbox");
+      return;
+    }
 
-  if (nextScreen === "settings") {
-    setActive("settings");
-    return;
-  }
-};
+    if (nextScreen === "settings") {
+      setActive("settings");
+      return;
+    }
+  };
 
   const handleActive = (key) => {
     setActive(key);
 
     if (key === "home") setScreen("home");
-    if (key === "chatbot") setScreen("flows");
+    if (key === "chatbot") setScreen("all-chatbots");
     if (key === "inbox") setScreen("inbox");
     if (key === "settings") setScreen("ai-settings");
   };
@@ -101,19 +103,45 @@ export default function App() {
   };
 
   const current = (() => {
-    if (screen === "platform") return <PlatformScreen setScreen={navigateToScreen} />;
-    if (screen === "usecase") return <UsecaseScreen setScreen={navigateToScreen} />;
-    if (screen === "create-chatbot")
-  return <CreateChatbotScreen setScreen={navigateToScreen} />;
-    if (screen === "all-chatbots")
-  return <AllChatbotsScreen setScreen={navigateToScreen} />;
-    if (screen === "flows")  return <FlowsScreen setScreen={navigateToScreen} />;
-    if (screen === "builder")  return <BuilderScreen setScreen={navigateToScreen} />;
-    if (screen === "install")
+    if (screen === "platform") {
+      return <PlatformScreen setScreen={navigateToScreen} />;
+    }
+
+    if (screen === "usecase") {
+      return <UsecaseScreen setScreen={navigateToScreen} />;
+    }
+
+    if (screen === "create-chatbot") {
+      return <CreateChatbotScreen setScreen={navigateToScreen} />;
+    }
+
+    if (screen === "all-chatbots") {
+      return <AllChatbotsScreen setScreen={navigateToScreen} />;
+    }
+
+    if (screen === "agent-marketplace") {
+      return <AgentMarketplaceScreen setScreen={navigateToScreen} />;
+    }
+
+    if (screen === "flows") {
+      return <FlowsScreen setScreen={navigateToScreen} />;
+    }
+
+    if (screen === "builder") {
+      return <BuilderScreen setScreen={navigateToScreen} />;
+    }
+
+    if (screen === "install") {
       return <InstallWidgetScreen setScreen={navigateToScreen} />;
-    if (screen === "ai-settings")
+    }
+
+    if (screen === "ai-settings") {
       return <AiSettingsScreen setScreen={navigateToScreen} />;
-    if (screen === "inbox") return <InboxScreen />;
+    }
+
+    if (screen === "inbox") {
+      return <InboxScreen setScreen={navigateToScreen} />;
+    }
 
     return <HomeScreen setScreen={navigateToScreen} onLogout={handleLogout} />;
   })();

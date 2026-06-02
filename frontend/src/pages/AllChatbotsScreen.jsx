@@ -68,7 +68,7 @@ export default function AllChatbotsScreen({ setScreen }) {
             </button>
 
             <button
-              onClick={() => setScreen("platform")}
+              onClick={() => setScreen("agent-marketplace")}
               className="h-10 px-4 rounded-2xl bg-blue-600 text-white text-sm font-semibold flex items-center gap-2"
             >
               <Plus size={16} />

@@ -110,7 +110,7 @@ export default function HomeScreen({ setScreen, onLogout }) {
             <div className="h-1.5 w-40 rounded-full bg-gradient-to-r from-cyan-500 via-blue-600 to-orange-500 mb-5" />
 
             <p className="text-sm font-bold text-blue-700">
-              Welcome back, Alpha
+              Welcome back, Nexora
             </p>
 
             <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">
@@ -131,8 +131,8 @@ export default function HomeScreen({ setScreen, onLogout }) {
               Refresh Data
             </button>
 
-            <button
-              onClick={() => setScreen("platform")}
+           <button
+              onClick={() => setScreen("agent-marketplace")}
               className="h-11 px-5 rounded-2xl bg-blue-600 text-white text-sm font-bold shadow-sm hover:bg-blue-700 transition flex items-center gap-2"
             >
               <Plus size={17} /> Create Chatbot
@@ -297,9 +297,9 @@ export default function HomeScreen({ setScreen, onLogout }) {
               {[
                 {
                   title: "Create Chatbot",
-                  desc: "Start from channel and use case template.",
+                  desc: "Start from agent template.",
                   icon: Plus,
-                  action: () => setScreen("platform"),
+                  action: () => setScreen("agent-marketplace"),
                   primary: true,
                 },
                 {

@@ -26,6 +26,7 @@ export default function ChatbotSubnav({ setScreen, activeMenu = "flows" }) {
   } = useBotSelection();
 
   const [openBotMenu, setOpenBotMenu] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const botMenuRef = useRef(null);
 
   const items = [
@@ -107,6 +108,12 @@ export default function ChatbotSubnav({ setScreen, activeMenu = "flows" }) {
     };
   }, [refetch]);
 
+  useEffect(() => {
+    if (collapsed) {
+      setOpenBotMenu(false);
+    }
+  }, [collapsed]);
+
   const handleSelectBot = (botId) => {
     setSelectedBotId(botId);
     setOpenBotMenu(false);
@@ -115,155 +122,209 @@ export default function ChatbotSubnav({ setScreen, activeMenu = "flows" }) {
   const selectedBotName = selectedBot?.name || "Select Bot";
 
   return (
-    <aside className="w-64 border-r border-slate-200 bg-white h-screen p-5 shrink-0">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="font-bold text-slate-950">Nexora Studio</h2>
-          <p className="text-[11px] text-slate-400">Bot Builder</p>
+    <aside
+      className={`relative h-screen shrink-0 border-r border-slate-200 bg-white transition-all duration-300 ease-in-out ${
+        collapsed ? "w-[76px]" : "w-64"
+      }`}
+    >
+      <div className="flex h-full flex-col p-4">
+        {/* Header */}
+        <div
+          className={`mb-5 flex items-center ${
+            collapsed ? "justify-center" : "justify-between"
+          }`}
+        >
+          {!collapsed && (
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-black text-slate-950">
+                Nexora Studio
+              </h2>
+              <p className="mt-0.5 text-[11px] text-slate-400">Bot Builder</p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <span className="text-base font-black">
+              {collapsed ? "›" : "‹"}
+            </span>
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setScreen("platform")}
-          className="h-10 px-4 rounded-xl bg-blue-600 text-white text-sm font-medium flex items-center gap-2 hover:bg-blue-700 transition"
-        >
-          <Plus size={16} /> New Bot
-        </button>
-      </div>
+        {/* Bot Selector */}
+        <div className="relative mb-5" ref={botMenuRef}>
+          {collapsed ? (
+            <button
+              type="button"
+              onClick={() => setCollapsed(false)}
+              className="grid h-11 w-full place-items-center rounded-2xl border border-slate-200 bg-white text-emerald-600 transition hover:bg-slate-50"
+              title={loading ? "Loading bots..." : selectedBotName}
+            >
+              <MessageCircle size={18} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setOpenBotMenu((value) => !value)}
+              className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-3 text-sm transition hover:bg-slate-50"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <MessageCircle
+                  size={16}
+                  className="shrink-0 text-emerald-600"
+                />
 
-      <div className="relative mb-5" ref={botMenuRef}>
-        <button
-          type="button"
-          onClick={() => setOpenBotMenu((value) => !value)}
-          className="w-full rounded-2xl border border-slate-200 bg-white p-3 flex items-center justify-between text-sm hover:bg-slate-50 transition"
-        >
-          <span className="flex items-center gap-2 min-w-0">
-            <MessageCircle size={16} className="text-emerald-600 shrink-0" />
+                <span className="truncate font-semibold text-slate-700">
+                  {loading ? "Loading bots..." : selectedBotName}
+                </span>
+              </span>
 
-            <span className="truncate font-semibold text-slate-700">
-              {loading ? "Loading bots..." : selectedBotName}
-            </span>
-          </span>
+              <ChevronDown
+                size={15}
+                className={`text-slate-400 transition ${
+                  openBotMenu ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          )}
 
-          <ChevronDown
-            size={15}
-            className={`text-slate-400 transition ${
-              openBotMenu ? "rotate-180" : ""
-            }`}
-          />
-        </button>
+          {!collapsed && openBotMenu && (
+            <div className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+              <div className="max-h-72 overflow-y-auto p-2">
+                {error && (
+                  <div className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+                    {error}
+                  </div>
+                )}
 
-        {openBotMenu && (
-          <div className="absolute left-0 right-0 mt-2 rounded-2xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
-            <div className="p-2 max-h-72 overflow-y-auto">
-              {error && (
-                <div className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
-                  {error}
-                </div>
-              )}
+                {!error && loading && (
+                  <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
+                    Loading bot list...
+                  </div>
+                )}
 
-              {!error && loading && (
-                <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
-                  Loading bot list...
-                </div>
-              )}
+                {!error && !loading && bots.length === 0 && (
+                  <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
+                    No bot found.
+                  </div>
+                )}
 
-              {!error && !loading && bots.length === 0 && (
-                <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
-                  No bot found.
-                </div>
-              )}
+                {!loading &&
+                  bots.map((bot) => {
+                    const isSelected = bot.id === selectedBotId;
 
-              {!loading &&
-                bots.map((bot) => {
-                  const isSelected = bot.id === selectedBotId;
+                    return (
+                      <button
+                        key={bot.id}
+                        type="button"
+                        onClick={() => handleSelectBot(bot.id)}
+                        className={`w-full rounded-xl px-3 py-3 text-left transition ${
+                          isSelected
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`grid h-8 w-8 place-items-center rounded-xl text-xs font-black ${
+                              isSelected
+                                ? "bg-blue-600 text-white"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {bot.name?.charAt(0)?.toUpperCase() || "B"}
+                          </div>
 
-                  return (
-                    <button
-                      key={bot.id}
-                      type="button"
-                      onClick={() => handleSelectBot(bot.id)}
-                      className={`w-full rounded-xl px-3 py-3 text-left transition ${
-                        isSelected
-                          ? "bg-blue-50 text-blue-700"
-                          : "hover:bg-slate-50 text-slate-700"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`h-8 w-8 rounded-xl grid place-items-center text-xs font-black ${
-                            isSelected
-                              ? "bg-blue-600 text-white"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {bot.name?.charAt(0)?.toUpperCase() || "B"}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black">
+                              {bot.name}
+                            </p>
+                            <p className="mt-0.5 truncate text-[11px] text-slate-400">
+                              {bot.bot_type || "bot"} ·{" "}
+                              {bot.status || "active"}
+                            </p>
+                          </div>
                         </div>
+                      </button>
+                    );
+                  })}
+              </div>
 
-                        <div className="min-w-0">
-                          <p className="text-sm font-black truncate">
-                            {bot.name}
-                          </p>
-                          <p className="mt-0.5 text-[11px] text-slate-400 truncate">
-                            {bot.bot_type || "bot"} · {bot.status || "active"}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
+              <div className="border-t border-slate-100 p-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenBotMenu(false);
+                    setScreen("agent-marketplace");
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+                >
+                  <Plus size={15} />
+                  Create new bot
+                </button>
+              </div>
             </div>
+          )}
+        </div>
 
-            <div className="border-t border-slate-100 p-2">
+        {/* Menu Items */}
+        <nav className="space-y-1">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeMenu === item.key;
+
+            return (
               <button
+                key={item.key}
                 type="button"
+                disabled={item.disabled}
                 onClick={() => {
-                  setOpenBotMenu(false);
-                  setScreen("platform");
+                  if (item.disabled) return;
+                  item.action?.();
                 }}
-                className="w-full rounded-xl px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50 transition flex items-center gap-2"
+                title={collapsed ? item.label : undefined}
+                className={`group flex w-full items-center rounded-2xl text-sm transition ${
+                  collapsed ? "justify-center px-0 py-3" : "gap-3 px-4 py-3"
+                } ${
+                  isActive
+                    ? "bg-blue-50 text-blue-700 font-bold"
+                    : item.disabled
+                    ? "cursor-not-allowed text-slate-300"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
               >
-                <Plus size={15} />
-                Create new bot
+                <Icon size={18} className="shrink-0" />
+
+                {!collapsed && (
+                  <>
+                    <span className="truncate">{item.label}</span>
+
+                    {item.disabled && (
+                      <span className="ml-auto rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-400">
+                        Soon
+                      </span>
+                    )}
+                  </>
+                )}
               </button>
-            </div>
+            );
+          })}
+        </nav>
+
+        {/* Footer hint */}
+        {!collapsed && (
+          <div className="mt-auto rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-bold text-slate-700">Workspace</p>
+            <p className="mt-1 text-[11px] leading-5 text-slate-500">
+              Manage bot flows, training data, widget installation, and AI
+              settings.
+            </p>
           </div>
         )}
-      </div>
-
-      <div className="space-y-1">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeMenu === item.key;
-
-          return (
-            <button
-              key={item.key}
-              type="button"
-              disabled={item.disabled}
-              onClick={() => {
-                if (item.disabled) return;
-                item.action?.();
-              }}
-              className={`w-full rounded-2xl px-4 py-3 flex items-center gap-3 text-sm transition ${
-                isActive
-                  ? "bg-blue-50 text-blue-700 font-medium"
-                  : item.disabled
-                  ? "text-slate-300 cursor-not-allowed"
-                  : "text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              <Icon size={17} />
-              {item.label}
-
-              {item.disabled && (
-                <span className="ml-auto text-[10px] px-2 py-1 rounded-full bg-slate-100 text-slate-400 font-bold">
-                  Soon
-                </span>
-              )}
-            </button>
-          );
-        })}
       </div>
     </aside>
   );

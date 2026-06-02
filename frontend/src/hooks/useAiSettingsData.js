@@ -10,6 +10,27 @@ const DEFAULT_AI_SETTINGS = {
   default_language: "id",
   tone: "professional",
 
+  // Structured Identity
+  agent_role: "",
+  department: "",
+  primary_audience: "",
+
+  // Structured Behavior
+  response_style: "Helpful and concise",
+  empathy_level: "Medium",
+  formality_level: "Professional",
+  knowledge_mode: "Approved Knowledge Only",
+  unknown_answer_behavior: "Use fallback and offer handoff when needed.",
+
+  // Structured Guardrails
+  forbidden_topics: [],
+  sensitive_topics: [],
+  escalation_topics: [],
+  never_promise: [],
+  restricted_claims: [],
+
+  custom_instruction: "",
+
   main_instruction:
     "Anda adalah AI customer support. Jawab pertanyaan customer berdasarkan knowledge base yang tersedia.",
   business_context: "",
@@ -19,17 +40,162 @@ const DEFAULT_AI_SETTINGS = {
     "Informasi tersebut belum tersedia di knowledge base saya. Saya bisa bantu teruskan ke agent.",
 
   answer_length: "medium",
+
+  // Existing fields used by old UI
   use_bullets: true,
   ask_follow_up: true,
   show_sources: false,
+
+  // Alias fields used by widget-ai-reply / new runtime
+  use_bullet_points: true,
+  ask_follow_up_question: true,
+  show_knowledge_sources: false,
+
   confidence_threshold: 0.7,
 
   handoff_when_no_answer: true,
+
+  // Existing fields used by old UI
   handoff_when_customer_requests_agent: true,
   handoff_when_pricing_request: true,
+
+  // Alias fields used by widget-ai-reply / new runtime
+  handoff_when_customer_asks_human: true,
+  handoff_for_pricing_proposal: true,
+
   handoff_target: "support_agent",
 
   is_active: true,
+};
+
+const STRUCTURED_ARRAY_FIELDS = [
+  "forbidden_topics",
+  "sensitive_topics",
+  "escalation_topics",
+  "never_promise",
+  "restricted_claims",
+];
+
+const normalizeArrayField = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item).trim()).filter(Boolean);
+      }
+    } catch (_err) {
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+};
+
+const normalizeSettingsRow = (row = {}) => {
+  const normalized = {
+    ...DEFAULT_AI_SETTINGS,
+    ...row,
+  };
+
+  STRUCTURED_ARRAY_FIELDS.forEach((field) => {
+    normalized[field] = normalizeArrayField(normalized[field]);
+  });
+
+  normalized.use_bullet_points =
+    normalized.use_bullet_points ?? normalized.use_bullets ?? true;
+
+  normalized.use_bullets =
+    normalized.use_bullets ?? normalized.use_bullet_points ?? true;
+
+  normalized.ask_follow_up_question =
+    normalized.ask_follow_up_question ?? normalized.ask_follow_up ?? true;
+
+  normalized.ask_follow_up =
+    normalized.ask_follow_up ?? normalized.ask_follow_up_question ?? true;
+
+  normalized.show_knowledge_sources =
+    normalized.show_knowledge_sources ?? normalized.show_sources ?? false;
+
+  normalized.show_sources =
+    normalized.show_sources ?? normalized.show_knowledge_sources ?? false;
+
+  normalized.handoff_when_customer_asks_human =
+    normalized.handoff_when_customer_asks_human ??
+    normalized.handoff_when_customer_requests_agent ??
+    true;
+
+  normalized.handoff_when_customer_requests_agent =
+    normalized.handoff_when_customer_requests_agent ??
+    normalized.handoff_when_customer_asks_human ??
+    true;
+
+  normalized.handoff_for_pricing_proposal =
+    normalized.handoff_for_pricing_proposal ??
+    normalized.handoff_when_pricing_request ??
+    true;
+
+  normalized.handoff_when_pricing_request =
+    normalized.handoff_when_pricing_request ??
+    normalized.handoff_for_pricing_proposal ??
+    true;
+
+  return normalized;
+};
+
+const prepareSettingsPayload = (settings) => {
+  const normalized = normalizeSettingsRow(settings);
+
+  const payload = {
+    ...normalized,
+
+    forbidden_topics: normalizeArrayField(normalized.forbidden_topics),
+    sensitive_topics: normalizeArrayField(normalized.sensitive_topics),
+    escalation_topics: normalizeArrayField(normalized.escalation_topics),
+    never_promise: normalizeArrayField(normalized.never_promise),
+    restricted_claims: normalizeArrayField(normalized.restricted_claims),
+
+    use_bullet_points:
+      normalized.use_bullet_points ?? normalized.use_bullets ?? true,
+    use_bullets: normalized.use_bullets ?? normalized.use_bullet_points ?? true,
+
+    ask_follow_up_question:
+      normalized.ask_follow_up_question ?? normalized.ask_follow_up ?? true,
+    ask_follow_up:
+      normalized.ask_follow_up ?? normalized.ask_follow_up_question ?? true,
+
+    show_knowledge_sources:
+      normalized.show_knowledge_sources ?? normalized.show_sources ?? false,
+    show_sources:
+      normalized.show_sources ?? normalized.show_knowledge_sources ?? false,
+
+    handoff_when_customer_asks_human:
+      normalized.handoff_when_customer_asks_human ??
+      normalized.handoff_when_customer_requests_agent ??
+      true,
+    handoff_when_customer_requests_agent:
+      normalized.handoff_when_customer_requests_agent ??
+      normalized.handoff_when_customer_asks_human ??
+      true,
+
+    handoff_for_pricing_proposal:
+      normalized.handoff_for_pricing_proposal ??
+      normalized.handoff_when_pricing_request ??
+      true,
+    handoff_when_pricing_request:
+      normalized.handoff_when_pricing_request ??
+      normalized.handoff_for_pricing_proposal ??
+      true,
+  };
+
+  return payload;
 };
 
 export default function useAiSettingsData() {
@@ -138,15 +304,13 @@ export default function useAiSettingsData() {
       if (settingError) throw settingError;
 
       if (settingRow) {
-        setSettings({
-          ...DEFAULT_AI_SETTINGS,
-          ...settingRow,
-        });
+        setSettings(normalizeSettingsRow(settingRow));
       } else {
-        setSettings({
-          ...DEFAULT_AI_SETTINGS,
-          ai_name: bot.name ? `${bot.name} AI` : "Customer Support AI",
-        });
+        setSettings(
+          normalizeSettingsRow({
+            ai_name: bot.name ? `${bot.name} AI` : "Customer Support AI",
+          })
+        );
       }
 
       const { data: articleRows, error: articleError } = await supabase
@@ -192,6 +356,7 @@ export default function useAiSettingsData() {
       if (documentError) throw documentError;
 
       const docs = documentRows || [];
+
       setDocuments(docs);
 
       const documentIds = docs.map((doc) => doc.id);
@@ -237,10 +402,56 @@ export default function useAiSettingsData() {
   };
 
   const updateSettingField = (field, value) => {
-    setSettings((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    setSettings((current) => {
+      const next = {
+        ...current,
+        [field]: STRUCTURED_ARRAY_FIELDS.includes(field)
+          ? normalizeArrayField(value)
+          : value,
+      };
+
+      if (field === "use_bullets") {
+        next.use_bullet_points = value;
+      }
+
+      if (field === "use_bullet_points") {
+        next.use_bullets = value;
+      }
+
+      if (field === "ask_follow_up") {
+        next.ask_follow_up_question = value;
+      }
+
+      if (field === "ask_follow_up_question") {
+        next.ask_follow_up = value;
+      }
+
+      if (field === "show_sources") {
+        next.show_knowledge_sources = value;
+      }
+
+      if (field === "show_knowledge_sources") {
+        next.show_sources = value;
+      }
+
+      if (field === "handoff_when_customer_requests_agent") {
+        next.handoff_when_customer_asks_human = value;
+      }
+
+      if (field === "handoff_when_customer_asks_human") {
+        next.handoff_when_customer_requests_agent = value;
+      }
+
+      if (field === "handoff_when_pricing_request") {
+        next.handoff_for_pricing_proposal = value;
+      }
+
+      if (field === "handoff_for_pricing_proposal") {
+        next.handoff_when_pricing_request = value;
+      }
+
+      return next;
+    });
   };
 
   const saveSettings = async () => {
@@ -252,13 +463,15 @@ export default function useAiSettingsData() {
 
       if (!currentBot?.id) {
         const result = await getCurrentWorkspaceAndBot();
+
         currentBot = result.bot;
+
         setWorkspace(result.workspace);
         setActiveBot(result.bot);
       }
 
       const payload = {
-        ...settings,
+        ...prepareSettingsPayload(settings),
         bot_id: currentBot.id,
         updated_at: new Date().toISOString(),
       };
@@ -276,10 +489,7 @@ export default function useAiSettingsData() {
 
       if (upsertError) throw upsertError;
 
-      setSettings({
-        ...DEFAULT_AI_SETTINGS,
-        ...data,
-      });
+      setSettings(normalizeSettingsRow(data));
 
       return data;
     } catch (err) {
@@ -300,7 +510,9 @@ export default function useAiSettingsData() {
 
       if (!currentBot?.id) {
         const result = await getCurrentWorkspaceAndBot();
+
         currentBot = result.bot;
+
         setWorkspace(result.workspace);
         setActiveBot(result.bot);
       }
@@ -407,6 +619,7 @@ export default function useAiSettingsData() {
 
       if (!currentWorkspace?.id || !currentBot?.id) {
         const result = await getCurrentWorkspaceAndBot();
+
         currentWorkspace = result.workspace;
         currentBot = result.bot;
 
@@ -414,12 +627,12 @@ export default function useAiSettingsData() {
         setActiveBot(currentBot);
       }
 
-      const allowedExtensions = ["pdf", "docx", "txt", "csv", "xlsx"];
+      const allowedExtensions = ["txt"];
       const fileExtension = file.name.split(".").pop()?.toLowerCase();
 
       if (!allowedExtensions.includes(fileExtension)) {
         throw new Error(
-          "Format file tidak didukung. Gunakan PDF, DOCX, TXT, CSV, atau XLSX."
+          "AI indexing untuk MVP saat ini hanya mendukung file TXT. PDF, DOCX, CSV, dan XLSX akan didukung pada fase berikutnya."
         );
       }
 
@@ -453,7 +666,7 @@ export default function useAiSettingsData() {
         .upload(storagePath, file, {
           cacheControl: "3600",
           upsert: false,
-          contentType: file.type || "application/octet-stream",
+          contentType: file.type || "text/plain",
         });
 
       if (uploadError) throw uploadError;
@@ -472,7 +685,7 @@ export default function useAiSettingsData() {
           file_url: storagePath,
           source_type: "upload",
           title: documentTitle,
-          description: "Uploaded document awaiting indexing.",
+          description: "TXT document uploaded and awaiting indexing.",
           status: "uploaded",
           total_chunks: 0,
           indexed_chunks: 0,
@@ -503,9 +716,11 @@ export default function useAiSettingsData() {
         throw new Error("Document tidak valid.");
       }
 
-      if (document.status !== "uploaded") {
+      const allowedStatuses = ["uploaded", "indexed", "failed"];
+
+      if (!allowedStatuses.includes(document.status)) {
         throw new Error(
-          "Hanya document dengan status Uploaded yang bisa di-index manual."
+          "Document hanya bisa di-index jika statusnya Uploaded, Indexed, atau Failed."
         );
       }
 
@@ -514,7 +729,9 @@ export default function useAiSettingsData() {
         document.file_name?.split(".").pop()?.toLowerCase();
 
       if (fileExtension !== "txt") {
-        throw new Error("Index manual sementara hanya mendukung file .txt.");
+        throw new Error(
+          "AI indexing saat ini hanya mendukung file .txt. PDF, DOCX, CSV, dan XLSX akan didukung pada fase berikutnya."
+        );
       }
 
       const storagePath = document.file_url || document.metadata?.storagePath;
@@ -522,6 +739,18 @@ export default function useAiSettingsData() {
       if (!storagePath) {
         throw new Error("Storage path document tidak ditemukan.");
       }
+
+      const { error: markProcessingError } = await supabase
+        .from("knowledge_documents")
+        .update({
+          status: "processing",
+          processing_started_at: new Date().toISOString(),
+          error_message: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", document.id);
+
+      if (markProcessingError) throw markProcessingError;
 
       const { data: fileBlob, error: downloadError } = await supabase.storage
         .from("knowledge-files")
@@ -541,21 +770,21 @@ export default function useAiSettingsData() {
       }
 
       const chunkSize = 800;
-      const chunks = [];
+      const chunksToCreate = [];
 
       for (let i = 0; i < cleanText.length; i += chunkSize) {
         const chunkText = cleanText.slice(i, i + chunkSize).trim();
 
         if (chunkText) {
-          chunks.push(chunkText);
+          chunksToCreate.push(chunkText);
         }
       }
 
-      if (chunks.length === 0) {
+      if (chunksToCreate.length === 0) {
         throw new Error("Tidak ada chunk yang berhasil dibuat.");
       }
 
-      const chunkPayload = chunks.map((content, index) => ({
+      const chunkPayload = chunksToCreate.map((content, index) => ({
         workspace_id: document.workspace_id,
         bot_id: document.bot_id,
         document_id: document.id,
@@ -571,6 +800,7 @@ export default function useAiSettingsData() {
           source: "manual_txt_index",
           fileName: document.file_name,
           chunkSize,
+          reindexedAt: new Date().toISOString(),
         },
       }));
 
@@ -591,8 +821,8 @@ export default function useAiSettingsData() {
         .from("knowledge_documents")
         .update({
           status: "indexed",
-          total_chunks: chunks.length,
-          indexed_chunks: chunks.length,
+          total_chunks: chunksToCreate.length,
+          indexed_chunks: chunksToCreate.length,
           indexed_at: new Date().toISOString(),
           error_message: null,
           metadata: {
@@ -601,6 +831,7 @@ export default function useAiSettingsData() {
             indexedAt: new Date().toISOString(),
             chunkSize,
           },
+          updated_at: new Date().toISOString(),
         })
         .eq("id", document.id);
 
@@ -616,12 +847,63 @@ export default function useAiSettingsData() {
           .update({
             status: "failed",
             error_message: err?.message || "Failed to index document.",
+            updated_at: new Date().toISOString(),
           })
           .eq("id", document.id);
       }
 
       setError(err?.message || "Failed to index document.");
       await fetchAiSettingsData();
+
+      throw err;
+    }
+  };
+
+  const deleteKnowledgeDocument = async (document) => {
+    setError("");
+
+    try {
+      if (!document?.id) {
+        throw new Error("Document tidak valid.");
+      }
+
+      if (!activeBot?.id) {
+        throw new Error("Bot aktif belum tersedia.");
+      }
+
+      const storagePath = document.file_url || document.metadata?.storagePath;
+      const storageBucket = document.metadata?.storageBucket || "knowledge-files";
+
+      const { error: deleteChunksError } = await supabase
+        .from("knowledge_chunks")
+        .delete()
+        .eq("document_id", document.id)
+        .eq("bot_id", activeBot.id);
+
+      if (deleteChunksError) throw deleteChunksError;
+
+      const { error: deleteDocumentError } = await supabase
+        .from("knowledge_documents")
+        .delete()
+        .eq("id", document.id)
+        .eq("bot_id", activeBot.id);
+
+      if (deleteDocumentError) throw deleteDocumentError;
+
+      if (storagePath) {
+        const { error: removeStorageError } = await supabase.storage
+          .from(storageBucket)
+          .remove([storagePath]);
+
+        if (removeStorageError) {
+          console.warn("[Storage delete warning]", removeStorageError);
+        }
+      }
+
+      await fetchAiSettingsData();
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "Failed to delete knowledge document.");
       throw err;
     }
   };
@@ -701,7 +983,9 @@ export default function useAiSettingsData() {
     const readyItems = indexedDocuments + publishedArticles;
 
     const knowledgeHealth =
-      knowledgeItems === 0 ? 0 : Math.round((readyItems / knowledgeItems) * 100);
+      knowledgeItems === 0
+        ? 0
+        : Math.round((readyItems / knowledgeItems) * 100);
 
     return {
       totalDocuments,
@@ -743,6 +1027,7 @@ export default function useAiSettingsData() {
 
     uploadKnowledgeDocument,
     indexTextKnowledgeDocument,
+    deleteKnowledgeDocument,
 
     refetch: fetchAiSettingsData,
   };

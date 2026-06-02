@@ -1,100 +1,732 @@
 (function () {
-  const WIDGET_API_URL =
-    "https://eqxbozcazttqhnzhkqow.supabase.co/functions/v1/widget-message";
+  "use strict";
 
-  const WIDGET_FETCH_MESSAGES_URL =
-    "https://eqxbozcazttqhnzhkqow.supabase.co/functions/v1/widget-fetch-messages";
-
-  const WIDGET_CONFIG_URL =
-    "https://eqxbozcazttqhnzhkqow.supabase.co/functions/v1/widget-config";
-
-  const scriptTag =
-    document.currentScript || document.querySelector("script[data-bot-id]");
-
-  const widgetKey = scriptTag?.getAttribute("data-bot-id");
-
-  if (!widgetKey) {
-    console.error("[Nexora Widget] Missing data-bot-id.");
-    return;
-  }
-
-  const state = {
-    isOpen: false,
-    isLoaded: false,
-    isSending: false,
-    pollingTimer: null,
-    conversationId: null,
-    unreadCount: 0,
-    lastMessageIds: new Set(),
-    widgetSetting: {
-      title: "Nexora Support",
-      subtitle: "Online",
-      greeting_message: "Hi! Welcome to support. How can we help you today?",
-      primary_color: "#2563eb",
-    },
-    messages: [],
+  const DEFAULT_CONFIG = {
+    widgetKey: "customer-support-bot_1778926840052_widget",
+    title: "Nexora Support",
+    subtitle: "Online",
+    greetingMessage: "Hi! Welcome to support. How can we help?",
+    primaryColor: "#2563eb",
+    customerName: "Website Visitor",
+    customerEmail: "visitor@example.com",
   };
 
-  const storageKey = `nexora_widget_conversation_${widgetKey}`;
+  const SUPABASE_FUNCTION_BASE_URL =
+    "https://eqxbozcazttqhnzhkqow.supabase.co/functions/v1";
+
+  const WIDGET_CONFIG_URL = `${SUPABASE_FUNCTION_BASE_URL}/widget-config`;
+  const WIDGET_MESSAGE_URL = `${SUPABASE_FUNCTION_BASE_URL}/widget-message`;
+  const WIDGET_FETCH_MESSAGES_URL = `${SUPABASE_FUNCTION_BASE_URL}/widget-fetch-messages`;
+
+  const scriptTag =
+    document.currentScript ||
+    document.querySelector("script[data-nexora-widget-key]") ||
+    document.querySelector("script[src*='widget.js']");
+
+  const scriptConfig = {
+    widgetKey:
+      scriptTag?.getAttribute("data-widget-key") ||
+      scriptTag?.getAttribute("data-nexora-widget-key") ||
+      window.NEXORA_WIDGET_KEY ||
+      DEFAULT_CONFIG.widgetKey,
+    customerName:
+      scriptTag?.getAttribute("data-customer-name") ||
+      window.NEXORA_CUSTOMER_NAME ||
+      DEFAULT_CONFIG.customerName,
+    customerEmail:
+      scriptTag?.getAttribute("data-customer-email") ||
+      window.NEXORA_CUSTOMER_EMAIL ||
+      DEFAULT_CONFIG.customerEmail,
+  };
+
+  const STORAGE_PREFIX = `nexora_widget_${scriptConfig.widgetKey}`;
+  const CONVERSATION_STORAGE_KEY = `${STORAGE_PREFIX}_conversation_id`;
+  const OPEN_STORAGE_KEY = `${STORAGE_PREFIX}_is_open`;
+
+  const state = {
+    config: {
+      ...DEFAULT_CONFIG,
+      ...scriptConfig,
+    },
+    conversationId: localStorage.getItem(CONVERSATION_STORAGE_KEY) || "",
+    isOpen: localStorage.getItem(OPEN_STORAGE_KEY) === "true",
+    isSending: false,
+    isPolling: false,
+    unreadCount: 0,
+    lastRenderedMessageIds: new Set(),
+    renderedMessageSignatures: [],
+    pollingTimer: null,
+  };
+
+  let root = null;
+  let panel = null;
+  let bubble = null;
+  let badge = null;
+  let header = null;
+  let messagesContainer = null;
+  let input = null;
+  let sendButton = null;
+  let resetButton = null;
+  let typingMessageEl = null;
 
   const escapeHtml = (value) => {
     return String(value || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   };
 
-  const getStoredConversationId = () => {
-    return localStorage.getItem(storageKey);
+  const normalizeMessageContent = (value) => {
+    return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
   };
 
-  const setStoredConversationId = (conversationId) => {
-    if (!conversationId) return;
+  const getMessageTimestampMs = (message) => {
+    const timestamp =
+      message?.sent_at ||
+      message?.created_at ||
+      message?.timestamp ||
+      message?.updated_at;
 
-    localStorage.setItem(storageKey, conversationId);
-    state.conversationId = conversationId;
+    if (!timestamp) return 0;
+
+    const parsed = new Date(timestamp).getTime();
+
+    return Number.isFinite(parsed) ? parsed : 0;
   };
 
-  const clearStoredConversationId = () => {
-    localStorage.removeItem(storageKey);
-    state.conversationId = null;
-    state.lastMessageIds = new Set();
-  };
+  const getNormalizedSender = (message) => {
+    const senderType =
+      message?.sender_type ||
+      message?.senderType ||
+      message?.role ||
+      "bot";
 
-  const normalizeSenderType = (senderType) => {
-    if (senderType === "customer") return "customer";
+    if (senderType === "customer" || senderType === "user") return "customer";
+    if (senderType === "agent") return "agent";
+    if (senderType === "system") return "system";
+
     return "bot";
   };
 
-  const buildDefaultGreeting = () => {
-    return (
-      state.widgetSetting.greeting_message ||
-      "Hi! Welcome to support. How can we help you today?"
+  const isDuplicateMessage = (message) => {
+    const normalizedSender = getNormalizedSender(message);
+
+    const content = normalizeMessageContent(
+      message?.content || message?.message || message?.text || ""
     );
-  };
 
-  const buildLoadingMessage = () => {
-    return "Loading previous conversation...";
-  };
+    if (!content) return false;
 
-  const updateUnreadBadge = () => {
-    const badge = document.getElementById("nexora-widget-unread-badge");
+    const currentTime = getMessageTimestampMs(message);
 
-    if (!badge) return;
+    for (const existing of state.renderedMessageSignatures) {
+      if (existing.sender !== normalizedSender) continue;
+      if (existing.content !== content) continue;
 
-    if (state.unreadCount <= 0) {
-      badge.style.display = "none";
-      badge.innerText = "";
-      return;
+      if (!currentTime || !existing.time) {
+        return true;
+      }
+
+      const diffMs = Math.abs(currentTime - existing.time);
+
+      if (diffMs <= 15000) {
+        return true;
+      }
     }
 
-    badge.style.display = "grid";
-    badge.innerText = state.unreadCount > 9 ? "9+" : String(state.unreadCount);
+    return false;
   };
 
-  const loadWidgetConfig = async () => {
+  const rememberMessageSignature = (message) => {
+    const normalizedSender = getNormalizedSender(message);
+
+    const content = normalizeMessageContent(
+      message?.content || message?.message || message?.text || ""
+    );
+
+    if (!content) return;
+
+    state.renderedMessageSignatures.push({
+      sender: normalizedSender,
+      content,
+      time: getMessageTimestampMs(message) || Date.now(),
+    });
+
+    if (state.renderedMessageSignatures.length > 80) {
+      state.renderedMessageSignatures =
+        state.renderedMessageSignatures.slice(-80);
+    }
+  };
+
+  const normalizeColor = (value) => {
+    const color = String(value || "").trim();
+
+    if (/^#[0-9A-Fa-f]{6}$/.test(color)) return color;
+    if (/^#[0-9A-Fa-f]{3}$/.test(color)) return color;
+
+    return DEFAULT_CONFIG.primaryColor;
+  };
+
+  const getContrastTextColor = (hexColor) => {
+    const clean = normalizeColor(hexColor).replace("#", "");
+
+    const full =
+      clean.length === 3
+        ? clean
+            .split("")
+            .map((char) => char + char)
+            .join("")
+        : clean;
+
+    const r = parseInt(full.substring(0, 2), 16);
+    const g = parseInt(full.substring(2, 4), 16);
+    const b = parseInt(full.substring(4, 6), 16);
+
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    return luminance > 0.65 ? "#0f172a" : "#ffffff";
+  };
+
+  const getPrimaryColor = () => {
+    return normalizeColor(state.config.primaryColor);
+  };
+
+  const getPrimaryTextColor = () => {
+    return getContrastTextColor(getPrimaryColor());
+  };
+
+  const scrollToBottom = () => {
+    if (!messagesContainer) return;
+
+    requestAnimationFrame(() => {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
+  };
+
+  const injectStyles = () => {
+    if (document.getElementById("nexora-widget-style")) return;
+
+    const style = document.createElement("style");
+    style.id = "nexora-widget-style";
+
+    style.textContent = `
+      #nexora-widget-root {
+        position: fixed;
+        right: 28px;
+        bottom: 28px;
+        z-index: 2147483647;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .nexora-widget-panel {
+        width: 390px;
+        height: 620px;
+        max-width: calc(100vw - 32px);
+        max-height: calc(100vh - 110px);
+        background: #ffffff;
+        border-radius: 26px;
+        box-shadow: 0 28px 80px rgba(15, 23, 42, 0.22);
+        overflow: hidden;
+        display: none;
+        flex-direction: column;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        margin-bottom: 18px;
+        transform-origin: bottom right;
+      }
+
+      .nexora-widget-panel.nexora-open {
+        display: flex;
+        animation: nexoraPanelIn 0.18s ease-out;
+      }
+
+      @keyframes nexoraPanelIn {
+        from {
+          opacity: 0;
+          transform: translateY(12px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .nexora-widget-header {
+        min-height: 78px;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        color: var(--nexora-header-text, #ffffff);
+        background: var(--nexora-primary, #2563eb);
+      }
+
+      .nexora-widget-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.18);
+        color: var(--nexora-header-text, #ffffff);
+        font-size: 18px;
+        font-weight: 900;
+        flex: 0 0 auto;
+      }
+
+      .nexora-widget-title-wrap {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .nexora-widget-title {
+        font-size: 15px;
+        font-weight: 900;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .nexora-widget-subtitle {
+        margin-top: 3px;
+        font-size: 12px;
+        font-weight: 700;
+        opacity: 0.92;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .nexora-widget-reset {
+        border: 0;
+        outline: 0;
+        cursor: pointer;
+        color: var(--nexora-header-text, #ffffff);
+        background: rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        padding: 9px 13px;
+        font-weight: 900;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .nexora-widget-reset:hover {
+        background: rgba(255, 255, 255, 0.26);
+      }
+
+      .nexora-widget-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px 16px;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .nexora-widget-messages::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .nexora-widget-messages::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 999px;
+      }
+
+      .nexora-message-row {
+        display: flex;
+        width: 100%;
+      }
+
+      .nexora-message-row.nexora-message-customer {
+        justify-content: flex-end;
+      }
+
+      .nexora-message-row.nexora-message-bot,
+      .nexora-message-row.nexora-message-agent,
+      .nexora-message-row.nexora-message-system {
+        justify-content: flex-start;
+      }
+
+      .nexora-message-bubble {
+        max-width: 82%;
+        border-radius: 20px;
+        padding: 12px 14px;
+        font-size: 14px;
+        line-height: 1.55;
+        word-break: break-word;
+        white-space: pre-wrap;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+      }
+
+      .nexora-message-customer .nexora-message-bubble {
+        background: var(--nexora-primary, #2563eb);
+        color: var(--nexora-header-text, #ffffff);
+        border-bottom-right-radius: 8px;
+      }
+
+      .nexora-message-bot .nexora-message-bubble,
+      .nexora-message-agent .nexora-message-bubble,
+      .nexora-message-system .nexora-message-bubble {
+        background: #eef2f7;
+        color: #334155;
+        border-bottom-left-radius: 8px;
+      }
+
+      .nexora-message-meta {
+        margin-top: 6px;
+        font-size: 10px;
+        line-height: 1;
+        font-weight: 800;
+        opacity: 0.58;
+      }
+
+      .nexora-widget-footer {
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+        padding: 14px 13px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .nexora-widget-input {
+        flex: 1;
+        min-width: 0;
+        height: 44px;
+        border-radius: 16px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #0f172a;
+        outline: none;
+        padding: 0 14px;
+        font-size: 14px;
+      }
+
+      .nexora-widget-input:focus {
+        border-color: var(--nexora-primary, #2563eb);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+      }
+
+      .nexora-widget-input:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        background: #f8fafc;
+      }
+
+      .nexora-widget-send {
+        height: 44px;
+        min-width: 72px;
+        border: 0;
+        outline: 0;
+        border-radius: 16px;
+        background: var(--nexora-primary, #2563eb);
+        color: var(--nexora-header-text, #ffffff);
+        font-size: 13px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .nexora-widget-send:hover {
+        filter: brightness(0.96);
+      }
+
+      .nexora-widget-send:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .nexora-widget-bubble {
+        position: relative;
+        margin-left: auto;
+        width: 66px;
+        height: 66px;
+        border: 0;
+        outline: 0;
+        border-radius: 24px;
+        background: var(--nexora-primary, #2563eb);
+        color: var(--nexora-header-text, #ffffff);
+        box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+      }
+
+      .nexora-widget-bubble:hover {
+        filter: brightness(0.96);
+        transform: translateY(-1px);
+      }
+
+      .nexora-widget-bubble svg {
+        width: 30px;
+        height: 30px;
+      }
+
+      .nexora-widget-badge {
+        position: absolute;
+        top: -7px;
+        right: -7px;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: #ef4444;
+        color: white;
+        font-size: 12px;
+        line-height: 22px;
+        text-align: center;
+        font-weight: 900;
+        border: 2px solid #ffffff;
+        display: none;
+      }
+
+      .nexora-widget-badge.nexora-show {
+        display: block;
+      }
+
+      .nexora-typing-bubble {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 52px;
+        padding: 12px 14px;
+      }
+
+      .nexora-typing-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #94a3b8;
+        display: inline-block;
+        animation: nexoraTypingBlink 1.2s infinite ease-in-out;
+      }
+
+      .nexora-typing-dot:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+
+      .nexora-typing-dot:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+
+      @keyframes nexoraTypingBlink {
+        0%, 80%, 100% {
+          opacity: 0.35;
+          transform: translateY(0);
+        }
+
+        40% {
+          opacity: 1;
+          transform: translateY(-3px);
+        }
+      }
+
+      .nexora-widget-loading {
+        padding: 13px 14px;
+        border-radius: 18px;
+        background: #eef2f7;
+        color: #475569;
+        font-size: 13px;
+        line-height: 1.5;
+        width: fit-content;
+        max-width: 82%;
+      }
+
+      @media (max-width: 520px) {
+        #nexora-widget-root {
+          right: 16px;
+          bottom: 16px;
+        }
+
+        .nexora-widget-panel {
+          width: calc(100vw - 32px);
+          height: calc(100vh - 104px);
+          max-height: calc(100vh - 104px);
+          border-radius: 24px;
+        }
+
+        .nexora-widget-bubble {
+          width: 60px;
+          height: 60px;
+          border-radius: 22px;
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
+  };
+
+  const applyTheme = () => {
+    const primary = getPrimaryColor();
+    const textColor = getPrimaryTextColor();
+
+    if (!root) return;
+
+    root.style.setProperty("--nexora-primary", primary);
+    root.style.setProperty("--nexora-header-text", textColor);
+  };
+
+  const updateHeader = () => {
+    if (!header) return;
+
+    const title = state.config.title || DEFAULT_CONFIG.title;
+    const subtitle = state.config.subtitle || DEFAULT_CONFIG.subtitle;
+    const avatarText = title.trim().charAt(0).toUpperCase() || "N";
+
+    header.innerHTML = `
+      <div class="nexora-widget-avatar">${escapeHtml(avatarText)}</div>
+
+      <div class="nexora-widget-title-wrap">
+        <div class="nexora-widget-title">${escapeHtml(title)}</div>
+        <div class="nexora-widget-subtitle">${escapeHtml(subtitle)}</div>
+      </div>
+
+      <button type="button" class="nexora-widget-reset">New Chat</button>
+    `;
+
+    resetButton = header.querySelector(".nexora-widget-reset");
+    resetButton?.addEventListener("click", resetConversation);
+  };
+
+  const updateBadge = () => {
+    if (!badge) return;
+
+    if (state.unreadCount > 0 && !state.isOpen) {
+      badge.textContent = String(state.unreadCount > 99 ? "99+" : state.unreadCount);
+      badge.classList.add("nexora-show");
+    } else {
+      badge.classList.remove("nexora-show");
+    }
+  };
+
+  const showTypingIndicator = () => {
+    if (!messagesContainer) return;
+
+    removeTypingIndicator();
+
+    typingMessageEl = document.createElement("div");
+    typingMessageEl.className =
+      "nexora-message-row nexora-message-bot nexora-typing-message";
+
+    typingMessageEl.innerHTML = `
+      <div class="nexora-message-bubble nexora-typing-bubble">
+        <span class="nexora-typing-dot"></span>
+        <span class="nexora-typing-dot"></span>
+        <span class="nexora-typing-dot"></span>
+      </div>
+    `;
+
+    messagesContainer.appendChild(typingMessageEl);
+    scrollToBottom();
+  };
+
+  const removeTypingIndicator = () => {
+    if (typingMessageEl && typingMessageEl.parentNode) {
+      typingMessageEl.parentNode.removeChild(typingMessageEl);
+    }
+
+    typingMessageEl = null;
+  };
+
+  const renderMessage = (message) => {
+    if (!messagesContainer || !message) return;
+
+    const normalizedSender = getNormalizedSender(message);
+    const content = message.content || message.message || message.text || "";
+
+    if (!content) return;
+
+    const id =
+      message.id ||
+      `${normalizedSender}_${normalizeMessageContent(content)}_${
+        message.created_at || message.sent_at || Date.now()
+      }`;
+
+    if (state.lastRenderedMessageIds.has(id)) return;
+    if (isDuplicateMessage(message)) return;
+
+    state.lastRenderedMessageIds.add(id);
+    rememberMessageSignature(message);
+
+    const row = document.createElement("div");
+    row.className = `nexora-message-row nexora-message-${normalizedSender}`;
+
+    const bubbleEl = document.createElement("div");
+    bubbleEl.className = "nexora-message-bubble";
+    bubbleEl.innerHTML = escapeHtml(content);
+
+    const timestamp = message.sent_at || message.created_at || message.timestamp;
+    const senderName = message.sender_name || message.senderName || "";
+
+    if (timestamp || senderName) {
+      const metaEl = document.createElement("div");
+      metaEl.className = "nexora-message-meta";
+
+      const dateLabel = timestamp
+        ? new Date(timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "";
+
+      metaEl.textContent = [senderName, dateLabel].filter(Boolean).join(" · ");
+      bubbleEl.appendChild(metaEl);
+    }
+
+    row.appendChild(bubbleEl);
+    messagesContainer.appendChild(row);
+    scrollToBottom();
+  };
+
+  const renderMessages = (messages, { replace = false } = {}) => {
+    if (!messagesContainer) return;
+
+    removeTypingIndicator();
+
+    if (replace) {
+      messagesContainer.innerHTML = "";
+      state.lastRenderedMessageIds.clear();
+      state.renderedMessageSignatures = [];
+    }
+
+    const rows = Array.isArray(messages) ? messages : [];
+    rows.forEach(renderMessage);
+
+    scrollToBottom();
+  };
+
+  const renderLocalCustomerMessage = (content) => {
+    renderMessage({
+      id: `local_customer_${Date.now()}_${Math.random()}`,
+      sender_type: "customer",
+      sender_name: state.config.customerName || "Website Visitor",
+      message_type: "text",
+      content,
+      sent_at: new Date().toISOString(),
+    });
+  };
+
+  const renderLocalErrorMessage = (content) => {
+    renderMessage({
+      id: `local_error_${Date.now()}_${Math.random()}`,
+      sender_type: "bot",
+      sender_name: state.config.title || "Nexora Support",
+      message_type: "text",
+      content,
+      sent_at: new Date().toISOString(),
+    });
+  };
+
+  const setSendingState = (isSending) => {
+    state.isSending = isSending;
+
+    if (input) input.disabled = isSending;
+    if (sendButton) sendButton.disabled = isSending;
+  };
+
+  const loadConfig = async () => {
     try {
       const response = await fetch(WIDGET_CONFIG_URL, {
         method: "POST",
@@ -102,637 +734,372 @@
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          widgetKey,
+          widgetKey: state.config.widgetKey,
         }),
       });
 
-      const result = await response.json().catch(() => null);
+      const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result?.error || "Failed to load widget config.");
+      if (!response.ok || result.error) {
+        console.warn("[Nexora Widget] Config load failed:", result);
+        return;
       }
 
-      const widget = result?.widget;
+      const config =
+        result.config ||
+        result.widget ||
+        result.widgetSetting ||
+        result.data ||
+        result;
 
-      if (!widget) return;
-
-      state.widgetSetting = {
-        title: widget.title || state.widgetSetting.title,
-        subtitle: widget.subtitle || state.widgetSetting.subtitle,
-        greeting_message:
-          widget.greeting_message || state.widgetSetting.greeting_message,
-        primary_color: widget.primary_color || state.widgetSetting.primary_color,
+      state.config = {
+        ...state.config,
+        title:
+          config.title ||
+          config.widget_title ||
+          config.name ||
+          state.config.title,
+        subtitle:
+          config.subtitle ||
+          config.widget_subtitle ||
+          state.config.subtitle,
+        greetingMessage:
+          config.greeting_message ||
+          config.greetingMessage ||
+          state.config.greetingMessage,
+        primaryColor:
+          config.primary_color ||
+          config.primaryColor ||
+          state.config.primaryColor,
       };
+
+      applyTheme();
+      updateHeader();
     } catch (error) {
-      console.error("[Nexora Widget Config]", error);
+      console.warn("[Nexora Widget] Config request failed:", error);
     }
   };
 
-  const callWidgetMessageApi = async ({ message }) => {
-    const response = await fetch(WIDGET_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        widgetKey,
-        message,
-        conversationId: getStoredConversationId(),
-        customerName: "Website Visitor",
-        customerEmail: "visitor@example.com",
-      }),
-    });
+  const fetchMessages = async ({ silent = true } = {}) => {
+    if (!state.conversationId || state.isPolling) return;
 
-    const result = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(result?.error || "Failed to send message.");
-    }
-
-    return result;
-  };
-
-  const fetchMessagesFromServer = async () => {
-    const conversationId = getStoredConversationId();
-
-    if (!conversationId) return null;
-
-    const response = await fetch(WIDGET_FETCH_MESSAGES_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        widgetKey,
-        conversationId,
-      }),
-    });
-
-    const result = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(result?.error || "Failed to fetch messages.");
-    }
-
-    return result;
-  };
-
-  const syncMessagesFromServer = async () => {
-    const conversationId = getStoredConversationId();
-
-    if (!conversationId) {
-      state.messages = [
-        {
-          sender_type: "bot",
-          content: buildDefaultGreeting(),
-        },
-      ];
-
-      state.lastMessageIds = new Set();
-      updateUnreadBadge();
-      renderMessages();
-      return;
-    }
+    state.isPolling = true;
 
     try {
-      const result = await fetchMessagesFromServer();
-
-      if (!result?.messages || !Array.isArray(result.messages)) {
-        state.messages = [
-          {
-            sender_type: "bot",
-            content: buildDefaultGreeting(),
-          },
-        ];
-
-        updateUnreadBadge();
-        renderMessages();
-        return;
+      if (!silent && messagesContainer) {
+        const loadingEl = document.createElement("div");
+        loadingEl.className = "nexora-widget-loading";
+        loadingEl.textContent = "Loading previous conversation...";
+        messagesContainer.appendChild(loadingEl);
       }
 
-      if (result.messages.length === 0) {
-        state.messages = [
-          {
-            sender_type: "bot",
-            content: buildDefaultGreeting(),
-          },
-        ];
-
-        state.lastMessageIds = new Set();
-        updateUnreadBadge();
-        renderMessages();
-        return;
-      }
-
-      const previousMessageIds = new Set(state.lastMessageIds);
-      const incomingMessages = result.messages || [];
-
-      const newAgentMessages = incomingMessages.filter((message) => {
-        const isNew = !previousMessageIds.has(message.id);
-        const isFromAgentOrBot = message.sender_type !== "customer";
-
-        return isNew && isFromAgentOrBot;
+      const response = await fetch(WIDGET_FETCH_MESSAGES_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          widgetKey: state.config.widgetKey,
+          conversationId: state.conversationId,
+        }),
       });
 
-      if (!state.isOpen && previousMessageIds.size > 0) {
-        state.unreadCount += newAgentMessages.length;
+      const result = await response.json();
+
+      const loadingEl = messagesContainer?.querySelector(".nexora-widget-loading");
+      if (loadingEl) loadingEl.remove();
+
+      if (!response.ok || result.error) {
+        console.warn("[Nexora Widget] Fetch messages failed:", result);
+        return;
       }
 
-      state.lastMessageIds = new Set(
-        incomingMessages.map((message) => message.id)
-      );
+      const messages = result.messages || result.data?.messages || [];
+      const beforeCount = state.lastRenderedMessageIds.size;
 
-      state.messages = incomingMessages.map((message) => ({
-        id: message.id,
-        sender_type: normalizeSenderType(message.sender_type),
-        sender_name: message.sender_name,
-        message_type: message.message_type,
-        content: message.content,
-        sent_at: message.sent_at,
-      }));
+      renderMessages(messages);
 
-      updateUnreadBadge();
-      renderMessages();
+      const afterCount = state.lastRenderedMessageIds.size;
+      const newCount = Math.max(afterCount - beforeCount, 0);
+
+      if (!state.isOpen && newCount > 0) {
+        state.unreadCount += newCount;
+        updateBadge();
+      }
     } catch (error) {
-      console.error("[Nexora Widget Sync]", error);
-
-      clearStoredConversationId();
-
-      state.messages = [
-        {
-          sender_type: "bot",
-          content:
-            "We could not load your previous conversation. Please start a new chat.",
-        },
-      ];
-
-      updateUnreadBadge();
-      renderMessages();
+      console.warn("[Nexora Widget] Fetch messages request failed:", error);
+    } finally {
+      state.isPolling = false;
     }
   };
 
   const startPollingMessages = () => {
-    if (state.pollingTimer) return;
+    stopPollingMessages();
 
-    state.pollingTimer = window.setInterval(async () => {
-      if (state.isSending) return;
-
-      try {
-        await syncMessagesFromServer();
-      } catch (error) {
-        console.error("[Nexora Widget Polling]", error);
+    state.pollingTimer = window.setInterval(() => {
+      if (state.conversationId) {
+        fetchMessages({ silent: true });
       }
-    }, 4000);
+    }, 2500);
   };
 
   const stopPollingMessages = () => {
-    if (!state.pollingTimer) return;
-
-    window.clearInterval(state.pollingTimer);
-    state.pollingTimer = null;
-  };
-
-  const renderMessages = () => {
-    const messagesEl = document.getElementById("nexora-widget-messages");
-
-    if (!messagesEl) return;
-
-    const primaryColor = state.widgetSetting.primary_color || "#2563eb";
-
-    messagesEl.innerHTML = state.messages
-      .map((message) => {
-        const isCustomer = message.sender_type === "customer";
-
-        return `
-          <div style="
-            display: flex;
-            justify-content: ${isCustomer ? "flex-end" : "flex-start"};
-            margin-bottom: 10px;
-          ">
-            <div style="
-              max-width: 230px;
-              border-radius: 16px;
-              padding: 10px 12px;
-              font-size: 13px;
-              line-height: 1.5;
-              background: ${isCustomer ? primaryColor : "#f1f5f9"};
-              color: ${isCustomer ? "#ffffff" : "#334155"};
-              word-break: break-word;
-            ">
-              ${escapeHtml(message.content)}
-            </div>
-          </div>
-        `;
-      })
-      .join("");
-
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  };
-
-  const setSendingState = (isSending) => {
-    state.isSending = isSending;
-
-    const button = document.getElementById("nexora-widget-send");
-    const input = document.getElementById("nexora-widget-input");
-
-    if (!button || !input) return;
-
-    button.disabled = isSending;
-    input.disabled = isSending;
-    button.innerText = isSending ? "Sending..." : "Send";
+    if (state.pollingTimer) {
+      window.clearInterval(state.pollingTimer);
+      state.pollingTimer = null;
+    }
   };
 
   const sendMessage = async () => {
-    const input = document.getElementById("nexora-widget-input");
+    if (!input || !sendButton) return;
 
-    const message = input?.value?.trim();
+    const text = input.value.trim();
 
-    if (!message || state.isSending) return;
+    if (!text || state.isSending) return;
 
     input.value = "";
-
-    state.messages.push({
-      sender_type: "customer",
-      content: message,
-    });
-
-    renderMessages();
     setSendingState(true);
 
+    renderLocalCustomerMessage(text);
+    showTypingIndicator();
+
     try {
-      const result = await callWidgetMessageApi({ message });
-
-      if (result?.conversationId) {
-        setStoredConversationId(result.conversationId);
-      }
-
-      await syncMessagesFromServer();
-      startPollingMessages();
-    } catch (error) {
-      console.error("[Nexora Widget]", error);
-
-      state.messages.push({
-        sender_type: "bot",
-        content:
-          "Sorry, failed to send your message. Please try again in a moment.",
+      const response = await fetch(WIDGET_MESSAGE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          widgetKey: state.config.widgetKey,
+          conversationId: state.conversationId || undefined,
+          message: text,
+          customerName: state.config.customerName || "Website Visitor",
+          customerEmail: state.config.customerEmail || "visitor@example.com",
+        }),
       });
 
-      renderMessages();
+      const result = await response.json();
+
+      if (!response.ok || result.error || result.success === false) {
+        throw new Error(result.error || "Failed to send message.");
+      }
+
+      if (result.conversationId) {
+        state.conversationId = result.conversationId;
+        localStorage.setItem(CONVERSATION_STORAGE_KEY, result.conversationId);
+      }
+
+     if (result.aiReplyResult?.answer) {
+  renderMessage({
+    id:
+      result.aiReplyResult?.botMessage?.id ||
+      `ai_reply_${Date.now()}_${Math.random()}`,
+    sender_type: "bot",
+    sender_name:
+      result.aiReplyResult?.botMessage?.sender_name ||
+      state.config.title ||
+      "Nexora Support",
+    content: result.aiReplyResult.answer,
+    sent_at:
+      result.aiReplyResult?.botMessage?.sent_at ||
+      result.aiReplyResult?.botMessage?.created_at ||
+      new Date().toISOString(),
+  });
+      } else if (result.botReply) {
+        renderMessage({
+          id: `bot_reply_${Date.now()}_${Math.random()}`,
+          sender_type: "bot",
+          sender_name: state.config.title || "Nexora Support",
+          content: result.botReply,
+          sent_at: new Date().toISOString(),
+        });
+      } else {
+        await fetchMessages({ silent: true });
+      }
+
+      startPollingMessages();
+    } catch (error) {
+      console.error("[Nexora Widget] Send message failed:", error);
+
+      renderLocalErrorMessage(
+        "Maaf, pesan Anda belum berhasil diproses. Silakan coba lagi sebentar lagi."
+      );
     } finally {
+      removeTypingIndicator();
       setSendingState(false);
+      input?.focus();
     }
   };
 
   const resetConversation = () => {
-    clearStoredConversationId();
-    stopPollingMessages();
-
+    state.conversationId = "";
     state.unreadCount = 0;
-    state.lastMessageIds = new Set();
+    state.lastRenderedMessageIds.clear();
+    state.renderedMessageSignatures = [];
 
-    state.messages = [
-      {
-        sender_type: "bot",
-        content: buildDefaultGreeting(),
-      },
-    ];
+    localStorage.removeItem(CONVERSATION_STORAGE_KEY);
 
-    updateUnreadBadge();
-    renderMessages();
-  };
-
-  const renderWidget = () => {
-    const primaryColor = state.widgetSetting.primary_color || "#2563eb";
-    const title = state.widgetSetting.title || "Nexora Support";
-    const subtitle = state.widgetSetting.subtitle || "Online";
-    const greeting = buildDefaultGreeting();
-
-    state.conversationId = getStoredConversationId();
-
-    state.messages = state.conversationId
-      ? [
-          {
-            sender_type: "bot",
-            content: buildLoadingMessage(),
-          },
-        ]
-      : [
-          {
-            sender_type: "bot",
-            content: greeting,
-          },
-        ];
-
-    const existingRoot = document.getElementById("nexora-widget-root");
-
-    if (existingRoot) {
-      existingRoot.remove();
+    if (messagesContainer) {
+      messagesContainer.innerHTML = "";
     }
 
-    const root = document.createElement("div");
+    removeTypingIndicator();
+    updateBadge();
+
+    const greeting = state.config.greetingMessage;
+
+    if (greeting) {
+      renderMessage({
+        id: `local_greeting_${Date.now()}_${Math.random()}`,
+        sender_type: "bot",
+        sender_name: state.config.title || "Nexora Support",
+        content: greeting,
+        sent_at: new Date().toISOString(),
+      });
+    }
+
+    input?.focus();
+  };
+
+  const togglePanel = async () => {
+    state.isOpen = !state.isOpen;
+
+    localStorage.setItem(OPEN_STORAGE_KEY, String(state.isOpen));
+
+    if (state.isOpen) {
+      panel?.classList.add("nexora-open");
+      state.unreadCount = 0;
+      updateBadge();
+
+      if (state.conversationId) {
+        await fetchMessages({ silent: false });
+      } else if (
+        messagesContainer &&
+        state.lastRenderedMessageIds.size === 0 &&
+        state.config.greetingMessage
+      ) {
+        renderMessage({
+          id: `local_greeting_${Date.now()}_${Math.random()}`,
+          sender_type: "bot",
+          sender_name: state.config.title || "Nexora Support",
+          content: state.config.greetingMessage,
+          sent_at: new Date().toISOString(),
+        });
+      }
+
+      startPollingMessages();
+      input?.focus();
+    } else {
+      panel?.classList.remove("nexora-open");
+      startPollingMessages();
+    }
+  };
+
+  const createWidgetDom = () => {
+    root = document.createElement("div");
     root.id = "nexora-widget-root";
 
     root.innerHTML = `
-      <style>
-        #nexora-widget-root * {
-          box-sizing: border-box;
-          font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
+      <div class="nexora-widget-panel">
+        <div class="nexora-widget-header"></div>
 
-        #nexora-widget-panel {
-          position: fixed;
-          right: 24px;
-          bottom: 96px;
-          width: 360px;
-          max-width: calc(100vw - 32px);
-          height: 500px;
-          max-height: calc(100vh - 130px);
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 24px;
-          box-shadow: 0 24px 80px rgba(15, 23, 42, 0.20);
-          overflow: hidden;
-          display: none;
-          z-index: 999999;
-        }
+        <div class="nexora-widget-messages"></div>
 
-        #nexora-widget-header {
-          padding: 16px;
-          color: #ffffff;
-          background: ${primaryColor};
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
+        <div class="nexora-widget-footer">
+          <input
+            class="nexora-widget-input"
+            type="text"
+            placeholder="Type your message..."
+            autocomplete="off"
+          />
 
-        #nexora-widget-header-left {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          min-width: 0;
-        }
-
-        #nexora-widget-avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 16px;
-          background: rgba(255, 255, 255, 0.18);
-          display: grid;
-          place-items: center;
-          font-weight: 900;
-          flex-shrink: 0;
-        }
-
-        #nexora-widget-title {
-          font-weight: 900;
-          font-size: 14px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 210px;
-        }
-
-        #nexora-widget-subtitle {
-          margin-top: 2px;
-          font-size: 12px;
-          opacity: 0.85;
-        }
-
-        #nexora-widget-reset {
-          border: 0;
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.16);
-          color: #ffffff;
-          padding: 7px 10px;
-          font-size: 11px;
-          font-weight: 800;
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-
-        #nexora-widget-reset:hover {
-          background: rgba(255, 255, 255, 0.24);
-        }
-
-        #nexora-widget-messages {
-          height: 360px;
-          overflow-y: auto;
-          padding: 16px;
-          background: #f8fafc;
-        }
-
-        #nexora-widget-composer {
-          padding: 12px;
-          border-top: 1px solid #e2e8f0;
-          background: #ffffff;
-          display: flex;
-          gap: 8px;
-        }
-
-        #nexora-widget-input {
-          flex: 1;
-          border: 1px solid #e2e8f0;
-          border-radius: 14px;
-          padding: 10px 12px;
-          font-size: 13px;
-          outline: none;
-          min-width: 0;
-        }
-
-        #nexora-widget-input:focus {
-          border-color: ${primaryColor};
-        }
-
-        #nexora-widget-input:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        #nexora-widget-send {
-          border: 0;
-          border-radius: 14px;
-          background: ${primaryColor};
-          color: #ffffff;
-          padding: 0 14px;
-          font-size: 13px;
-          font-weight: 800;
-          cursor: pointer;
-          min-width: 64px;
-        }
-
-        #nexora-widget-send:disabled {
-          opacity: 0.65;
-          cursor: not-allowed;
-        }
-
-        #nexora-widget-bubble {
-          position: fixed;
-          right: 24px;
-          bottom: 24px;
-          width: 60px;
-          height: 60px;
-          border-radius: 22px;
-          border: 0;
-          background: ${primaryColor};
-          color: #ffffff;
-          box-shadow: 0 20px 50px rgba(37, 99, 235, 0.35);
-          cursor: pointer;
-          display: grid;
-          place-items: center;
-          z-index: 999999;
-        }
-
-        #nexora-widget-unread-badge {
-          position: absolute;
-          top: -6px;
-          right: -6px;
-          width: 22px;
-          height: 22px;
-          border-radius: 999px;
-          background: #ef4444;
-          color: #ffffff;
-          border: 2px solid #ffffff;
-          display: none;
-          place-items: center;
-          font-size: 11px;
-          font-weight: 900;
-          line-height: 1;
-        }
-
-        @media (max-width: 480px) {
-          #nexora-widget-panel {
-            right: 16px;
-            bottom: 88px;
-            width: calc(100vw - 32px);
-            height: 500px;
-          }
-
-          #nexora-widget-bubble {
-            right: 16px;
-            bottom: 16px;
-          }
-        }
-      </style>
-
-      <div id="nexora-widget-panel">
-        <div id="nexora-widget-header">
-          <div id="nexora-widget-header-left">
-            <div id="nexora-widget-avatar">N</div>
-            <div>
-              <div id="nexora-widget-title">${escapeHtml(title)}</div>
-              <div id="nexora-widget-subtitle">${escapeHtml(subtitle)}</div>
-            </div>
-          </div>
-
-          <button id="nexora-widget-reset" type="button">
-            New Chat
+          <button type="button" class="nexora-widget-send">
+            Send
           </button>
-        </div>
-
-        <div id="nexora-widget-messages"></div>
-
-        <div id="nexora-widget-composer">
-          <input id="nexora-widget-input" placeholder="Type your message..." />
-          <button id="nexora-widget-send" type="button">Send</button>
         </div>
       </div>
 
-      <button id="nexora-widget-bubble" type="button" aria-label="Open chat">
-        <span id="nexora-widget-unread-badge"></span>
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-          <path d="M21 11.5C21 16.1944 16.9706 20 12 20C10.8325 20 9.71691 19.7898 8.6936 19.4078L3 21L4.66227 15.9623C3.61365 14.6608 3 13.1224 3 11.5C3 6.80558 7.02944 3 12 3C16.9706 3 21 6.80558 21 11.5Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+      <button type="button" class="nexora-widget-bubble" aria-label="Open chat">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7.5 18.2 4 20l.8-3.8A7.7 7.7 0 0 1 3 11.2C3 6.7 7 3 12 3s9 3.7 9 8.2-4 8.2-9 8.2c-1.6 0-3.1-.4-4.5-1.2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
         </svg>
+
+        <span class="nexora-widget-badge"></span>
       </button>
     `;
 
     document.body.appendChild(root);
 
-    const panel = document.getElementById("nexora-widget-panel");
-    const bubble = document.getElementById("nexora-widget-bubble");
-    const input = document.getElementById("nexora-widget-input");
-    const send = document.getElementById("nexora-widget-send");
-    const reset = document.getElementById("nexora-widget-reset");
+    panel = root.querySelector(".nexora-widget-panel");
+    header = root.querySelector(".nexora-widget-header");
+    messagesContainer = root.querySelector(".nexora-widget-messages");
+    input = root.querySelector(".nexora-widget-input");
+    sendButton = root.querySelector(".nexora-widget-send");
+    bubble = root.querySelector(".nexora-widget-bubble");
+    badge = root.querySelector(".nexora-widget-badge");
 
-    bubble.addEventListener("click", async () => {
-      state.isOpen = !state.isOpen;
-      panel.style.display = state.isOpen ? "block" : "none";
+    bubble?.addEventListener("click", togglePanel);
+    sendButton?.addEventListener("click", sendMessage);
 
-      if (state.isOpen) {
-        state.unreadCount = 0;
-        updateUnreadBadge();
-
-        const existingConversationId = getStoredConversationId();
-
-        if (existingConversationId) {
-          state.messages = [
-            {
-              sender_type: "bot",
-              content: buildLoadingMessage(),
-            },
-          ];
-
-          renderMessages();
-
-          try {
-            await syncMessagesFromServer();
-          } catch (error) {
-            console.error("[Nexora Widget]", error);
-
-            clearStoredConversationId();
-
-            state.messages = [
-              {
-                sender_type: "bot",
-                content:
-                  "We could not load your previous conversation. Please start a new chat.",
-              },
-            ];
-
-            renderMessages();
-          }
-        } else {
-          renderMessages();
-        }
-
-        startPollingMessages();
-
-        setTimeout(() => input.focus(), 100);
-      } else {
-        startPollingMessages();
-      }
-    });
-
-    send.addEventListener("click", sendMessage);
-
-    reset.addEventListener("click", () => {
-      resetConversation();
-    });
-
-    input.addEventListener("keydown", (event) => {
+    input?.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
         sendMessage();
       }
     });
 
-    updateUnreadBadge();
-    renderMessages();
+    updateHeader();
+    applyTheme();
+    updateBadge();
 
-    if (state.conversationId) {
-      startPollingMessages();
+    if (state.isOpen) {
+      panel?.classList.add("nexora-open");
     }
   };
 
   const init = async () => {
-    try {
-      await loadWidgetConfig();
-      renderWidget();
-    } catch (error) {
-      console.error("[Nexora Widget]", error);
-      renderWidget();
+    if (document.getElementById("nexora-widget-root")) return;
+
+    injectStyles();
+    createWidgetDom();
+
+    await loadConfig();
+
+    if (state.isOpen) {
+      if (state.conversationId) {
+        await fetchMessages({ silent: false });
+      } else if (state.config.greetingMessage) {
+        renderMessage({
+          id: `local_greeting_${Date.now()}_${Math.random()}`,
+          sender_type: "bot",
+          sender_name: state.config.title || "Nexora Support",
+          content: state.config.greetingMessage,
+          sent_at: new Date().toISOString(),
+        });
+      }
     }
+
+    startPollingMessages();
   };
 
-  init();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+  window.NexoraWidget = {
+    open: () => {
+      if (!state.isOpen) togglePanel();
+    },
+    close: () => {
+      if (state.isOpen) togglePanel();
+    },
+    reset: resetConversation,
+    refreshMessages: () => fetchMessages({ silent: false }),
+    getState: () => ({
+      ...state,
+      lastRenderedMessageIds: Array.from(state.lastRenderedMessageIds),
+    }),
+  };
 })();
