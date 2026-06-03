@@ -14,6 +14,7 @@ import LoginScreen from "./pages/LoginScreen";
 import CreateChatbotScreen from "./pages/CreateChatbotScreen";
 import AllChatbotsScreen from "./pages/AllChatbotsScreen";
 import AgentMarketplaceScreen from "./pages/AgentMarketplaceScreen";
+import AnalyticsScreen from "./pages/AnalyticsScreen";
 
 import { supabase } from "./lib/supabaseClient";
 
@@ -80,6 +81,11 @@ export default function App() {
       return;
     }
 
+    if (nextScreen === "analytics") {
+      setActive("analytics");
+      return;
+    }
+
     if (nextScreen === "settings") {
       setActive("settings");
       return;
@@ -92,6 +98,7 @@ export default function App() {
     if (key === "home") setScreen("home");
     if (key === "chatbot") setScreen("all-chatbots");
     if (key === "inbox") setScreen("inbox");
+    if (key === "analytics") setScreen("analytics");
     if (key === "settings") setScreen("ai-settings");
   };
 
@@ -141,6 +148,10 @@ export default function App() {
 
     if (screen === "inbox") {
       return <InboxScreen setScreen={navigateToScreen} />;
+    }
+
+    if (screen === "analytics") {
+      return <AnalyticsScreen setScreen={navigateToScreen} />;
     }
 
     return <HomeScreen setScreen={navigateToScreen} onLogout={handleLogout} />;
