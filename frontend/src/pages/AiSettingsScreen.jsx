@@ -1,27 +1,34 @@
-import ChatbotSubnav from "../components/layout/ChatbotSubnav";
-import { useRef, useState } from "react";
-import { BookOpen, BrainCircuit, Plus, Bot, Pencil, MessageCircle } from "../lib/icons";
-import useAiSettingsData from "../hooks/useAiSettingsData";
+import ChatbotSubnav from '../components/layout/ChatbotSubnav';
+import { useRef, useState } from 'react';
+import {
+  BookOpen,
+  BrainCircuit,
+  Plus,
+  Bot,
+  Pencil,
+  MessageCircle,
+} from '../lib/icons';
+import useAiSettingsData from '../hooks/useAiSettingsData';
 
 const DEFAULT_ARTICLE_FORM = {
-  title: "",
-  category: "",
-  tags: "",
-  content: "",
-  status: "draft",
+  title: '',
+  category: '',
+  tags: '',
+  content: '',
+  status: 'draft',
 };
 
 const arrayToText = (value) => {
-  if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "string") return value;
-  return "";
+  if (Array.isArray(value)) return value.join(', ');
+  if (typeof value === 'string') return value;
+  return '';
 };
 
 const getDocumentExtension = (document) => {
   return (
     document?.metadata?.extension ||
-    document?.file_name?.split(".").pop()?.toLowerCase() ||
-    ""
+    document?.file_name?.split('.').pop()?.toLowerCase() ||
+    ''
   );
 };
 
@@ -29,15 +36,15 @@ const canIndexDocument = (document) => {
   const extension = getDocumentExtension(document);
 
   return (
-    extension === "txt" &&
-    ["uploaded", "indexed", "failed"].includes(document.status)
+    extension === 'txt' &&
+    ['uploaded', 'indexed', 'failed'].includes(document.status)
   );
 };
 
 const isComingSoonDocument = (document) => {
   const extension = getDocumentExtension(document);
 
-  return extension && extension !== "txt";
+  return extension && extension !== 'txt';
 };
 
 const ToggleSwitch = ({ checked, onChange, label }) => {
@@ -49,12 +56,14 @@ const ToggleSwitch = ({ checked, onChange, label }) => {
     >
       <span className="text-sm font-bold text-slate-700">{label}</span>
       <div
-        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${checked ? "bg-blue-600" : "bg-slate-200"
-          }`}
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+          checked ? 'bg-blue-600' : 'bg-slate-200'
+        }`}
       >
         <span
-          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${checked ? "translate-x-5" : "translate-x-0"
-            }`}
+          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+            checked ? 'translate-x-5' : 'translate-x-0'
+          }`}
         />
       </div>
     </button>
@@ -89,11 +98,11 @@ export default function AiSettingsScreen({ setScreen }) {
 
   const fileInputRef = useRef(null);
 
-  const [activeTab, setActiveTab] = useState("identify");
+  const [activeTab, setActiveTab] = useState('identify');
   const [uploading, setUploading] = useState(false);
   const [indexingDocumentId, setIndexingDocumentId] = useState(null);
-  const [saveStatus, setSaveStatus] = useState("");
-  const [articleError, setArticleError] = useState("");
+  const [saveStatus, setSaveStatus] = useState('');
+  const [articleError, setArticleError] = useState('');
   const [articleForm, setArticleForm] = useState(DEFAULT_ARTICLE_FORM);
 
   const handleOpenFilePicker = () => {
@@ -109,7 +118,7 @@ export default function AiSettingsScreen({ setScreen }) {
 
     try {
       await uploadKnowledgeDocument(file);
-      event.target.value = "";
+      event.target.value = '';
     } catch (err) {
       // Error sudah ditampilkan dari hook.
     } finally {
@@ -131,7 +140,7 @@ export default function AiSettingsScreen({ setScreen }) {
 
   const handleDeleteDocument = async (document) => {
     const confirmed = window.confirm(
-      `Delete document "${document.file_name}"? This will also delete its indexed chunks.`
+      `Delete document "${document.file_name}"? This will also delete its indexed chunks.`,
     );
 
     if (!confirmed) return;
@@ -144,7 +153,7 @@ export default function AiSettingsScreen({ setScreen }) {
   };
 
   const updateArticleForm = (field, value) => {
-    setArticleError("");
+    setArticleError('');
 
     setArticleForm((current) => ({
       ...current,
@@ -153,20 +162,20 @@ export default function AiSettingsScreen({ setScreen }) {
   };
 
   const handleSaveSettings = async () => {
-    setSaveStatus("");
+    setSaveStatus('');
 
     try {
       await saveSettings();
-      setSaveStatus("Saved");
+      setSaveStatus('Saved');
 
       setTimeout(() => {
-        setSaveStatus("");
+        setSaveStatus('');
       }, 1800);
     } catch (err) {
-      setSaveStatus("Save failed");
+      setSaveStatus('Save failed');
 
       setTimeout(() => {
-        setSaveStatus("");
+        setSaveStatus('');
       }, 1800);
     }
   };
@@ -174,15 +183,15 @@ export default function AiSettingsScreen({ setScreen }) {
   const handleCreateArticle = async (event) => {
     event.preventDefault();
 
-    setArticleError("");
+    setArticleError('');
 
     if (!articleForm.title.trim()) {
-      setArticleError("Article title wajib diisi.");
+      setArticleError('Article title wajib diisi.');
       return;
     }
 
     if (!articleForm.content.trim()) {
-      setArticleError("Article content wajib diisi.");
+      setArticleError('Article content wajib diisi.');
       return;
     }
 
@@ -190,7 +199,7 @@ export default function AiSettingsScreen({ setScreen }) {
       await createArticle(articleForm);
       setArticleForm(DEFAULT_ARTICLE_FORM);
     } catch (err) {
-      setArticleError(err?.message || "Failed to create article.");
+      setArticleError(err?.message || 'Failed to create article.');
     }
   };
 
@@ -203,84 +212,84 @@ export default function AiSettingsScreen({ setScreen }) {
   };
 
   const formatStatus = (status) => {
-    if (!status) return "Unknown";
+    if (!status) return 'Unknown';
 
     return status
-      .split("_")
+      .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+      .join(' ');
   };
 
   const formatSourceType = (sourceType) => {
-    if (!sourceType) return "-";
+    if (!sourceType) return '-';
 
     return sourceType
-      .split("_")
+      .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+      .join(' ');
   };
 
   const formatUpdatedAt = (value) => {
-    if (!value) return "-";
+    if (!value) return '-';
 
     const date = new Date(value);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMinutes = Math.floor(diffMs / 60000);
 
-    if (diffMinutes < 1) return "Just now";
+    if (diffMinutes < 1) return 'Just now';
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
 
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours < 24) return `${diffHours}h ago`;
 
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return "Yesterday";
+    if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays}d ago`;
 
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
     });
   };
 
   const getStatusClass = (status) => {
-    if (status === "indexed") return "bg-emerald-50 text-emerald-700";
-    if (status === "published") return "bg-emerald-50 text-emerald-700";
-    if (status === "processing") return "bg-amber-50 text-amber-700";
-    if (status === "uploaded") return "bg-blue-50 text-blue-700";
-    if (status === "draft") return "bg-slate-100 text-slate-600";
-    if (status === "failed") return "bg-red-50 text-red-700";
-    if (status === "archived") return "bg-slate-100 text-slate-600";
+    if (status === 'indexed') return 'bg-emerald-50 text-emerald-700';
+    if (status === 'published') return 'bg-emerald-50 text-emerald-700';
+    if (status === 'processing') return 'bg-amber-50 text-amber-700';
+    if (status === 'uploaded') return 'bg-blue-50 text-blue-700';
+    if (status === 'draft') return 'bg-slate-100 text-slate-600';
+    if (status === 'failed') return 'bg-red-50 text-red-700';
+    if (status === 'archived') return 'bg-slate-100 text-slate-600';
 
-    return "bg-slate-100 text-slate-600";
+    return 'bg-slate-100 text-slate-600';
   };
 
   const getHealthDescription = () => {
     if (stats.totalDocuments === 0 && stats.totalArticles === 0) {
-      return "No knowledge source has been added yet.";
+      return 'No knowledge source has been added yet.';
     }
 
     if (stats.knowledgeHealth >= 80) {
-      return "Most knowledge sources are ready for AI responses.";
+      return 'Most knowledge sources are ready for AI responses.';
     }
 
     if (stats.knowledgeHealth >= 50) {
-      return "Some knowledge sources are ready, but coverage can still be improved.";
+      return 'Some knowledge sources are ready, but coverage can still be improved.';
     }
 
-    return "Knowledge coverage is still low. Upload documents or publish articles.";
+    return 'Knowledge coverage is still low. Upload documents or publish articles.';
   };
 
   const settingInputClass =
-    "mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100";
+    'mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100';
 
   const settingTextareaClass =
-    "mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 outline-none resize-none focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100";
+    'mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 outline-none resize-none focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100';
 
   const settingLabelClass =
-    "text-xs font-black uppercase tracking-wide text-slate-400";
+    'text-xs font-black uppercase tracking-wide text-slate-400';
 
   return (
     <div className="min-h-screen bg-[#F6F8FC] flex">
@@ -307,7 +316,7 @@ export default function AiSettingsScreen({ setScreen }) {
 
             <button
               type="button"
-              onClick={() => setScreen("builder")}
+              onClick={() => setScreen('builder')}
               className="h-10 px-4 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition"
             >
               Open Builder
@@ -319,18 +328,22 @@ export default function AiSettingsScreen({ setScreen }) {
               disabled={savingSettings || loading}
               className="h-10 px-4 rounded-2xl bg-blue-600 text-white text-sm font-bold disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700 transition"
             >
-              {savingSettings ? "Saving..." : saveStatus || "Save Settings"}
+              {savingSettings ? 'Saving...' : saveStatus || 'Save Settings'}
             </button>
           </div>
         </div>
 
         <div className="sticky top-16 z-20 border-b border-slate-200 bg-white/85 backdrop-blur-xl px-8 flex gap-6">
           {[
-            { id: "identify", label: "AI Identify", icon: Bot },
-            { id: "behavior", label: "Behavior", icon: BrainCircuit },
-            { id: "instructions", label: "Instructions", icon: Pencil },
-            { id: "response_handoff", label: "Response & Handoff", icon: MessageCircle },
-            { id: "knowledge", label: "Knowledge", icon: BookOpen },
+            { id: 'identify', label: 'AI Identify', icon: Bot },
+            { id: 'behavior', label: 'Behavior', icon: BrainCircuit },
+            { id: 'instructions', label: 'Instructions', icon: Pencil },
+            {
+              id: 'response_handoff',
+              label: 'Response & Handoff',
+              icon: MessageCircle,
+            },
+            { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -339,10 +352,11 @@ export default function AiSettingsScreen({ setScreen }) {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-1 py-4 text-sm font-bold border-b-2 transition duration-200 -mb-px relative cursor-pointer ${isActive
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
-                  }`}
+                className={`flex items-center gap-2 px-1 py-4 text-sm font-bold border-b-2 transition duration-200 -mb-px relative cursor-pointer ${
+                  isActive
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                }`}
               >
                 <Icon size={16} />
                 {tab.label}
@@ -358,16 +372,16 @@ export default function AiSettingsScreen({ setScreen }) {
             </div>
           )}
 
-          {activeTab === "identify" && (
+          {activeTab === 'identify' && (
             <div className="space-y-6 animate-fadeIn">
-              <section className="grid xl:grid-cols-[1fr_360px] gap-5 items-stretch">
+              <section className="hidden grid xl:grid-cols-[1fr_360px] gap-5 items-stretch">
                 <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-8 shadow-xl">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.45),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(37,99,235,0.35),transparent_32%)]" />
 
                   <div className="relative max-w-3xl">
                     <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm text-blue-50 mb-5">
                       <BrainCircuit size={16} />
-                      Bot: {activeBot?.name || "Loading..."}
+                      Bot: {activeBot?.name || 'Loading...'}
                     </div>
 
                     <h2 className="text-4xl font-black tracking-tight text-white">
@@ -385,11 +399,12 @@ export default function AiSettingsScreen({ setScreen }) {
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-center">
                   <p className="font-black text-slate-950">AI Identity Setup</p>
                   <p className="mt-2 text-sm text-slate-600">
-                    Define who your AI agent is, what company it represents, and its basic traits or tone.
+                    Define who your AI agent is, what company it represents, and
+                    its basic traits or tone.
                   </p>
                   <div className="mt-4 flex items-center gap-2 text-xs font-bold text-blue-600">
                     <Bot size={14} />
-                    Configuring {activeBot?.name || "AI Agent"}
+                    Configuring {activeBot?.name || 'AI Agent'}
                   </div>
                 </div>
               </section>
@@ -415,9 +430,9 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>AI Name</span>
                     <input
-                      value={settings.ai_name || ""}
+                      value={settings.ai_name || ''}
                       onChange={(event) =>
-                        updateSettingField("ai_name", event.target.value)
+                        updateSettingField('ai_name', event.target.value)
                       }
                       className={settingInputClass}
                       placeholder="Customer Support AI"
@@ -427,9 +442,9 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Company Name</span>
                     <input
-                      value={settings.company_name || ""}
+                      value={settings.company_name || ''}
                       onChange={(event) =>
-                        updateSettingField("company_name", event.target.value)
+                        updateSettingField('company_name', event.target.value)
                       }
                       className={settingInputClass}
                       placeholder="Saasten"
@@ -439,11 +454,11 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Default Language</span>
                     <select
-                      value={settings.default_language || "id"}
+                      value={settings.default_language || 'id'}
                       onChange={(event) =>
                         updateSettingField(
-                          "default_language",
-                          event.target.value
+                          'default_language',
+                          event.target.value,
                         )
                       }
                       className={settingInputClass}
@@ -457,9 +472,9 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Tone</span>
                     <select
-                      value={settings.tone || "professional"}
+                      value={settings.tone || 'professional'}
                       onChange={(event) =>
-                        updateSettingField("tone", event.target.value)
+                        updateSettingField('tone', event.target.value)
                       }
                       className={settingInputClass}
                     >
@@ -475,11 +490,11 @@ export default function AiSettingsScreen({ setScreen }) {
                 <label className="block mt-5">
                   <span className={settingLabelClass}>Role Description</span>
                   <textarea
-                    value={settings.role_description || ""}
+                    value={settings.role_description || ''}
                     onChange={(event) =>
-                      updateSettingField("role_description", event.target.value)
+                      updateSettingField('role_description', event.target.value)
                     }
-                    className={`${settingTextareaClass} h-24`}
+                    className={`${settingTextareaClass} h-32`}
                     placeholder="Example: You are a Customer Support Specialist for a SaaS company. Your role is to assist customers with product-related questions, troubleshoot common issues, provide accurate information based on company knowledge, and escalate complex cases to human agents when necessary."
                   />
                 </label>
@@ -506,9 +521,9 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Agent Role</span>
                     <select
-                      value={settings.agent_role || ""}
+                      value={settings.agent_role || ''}
                       onChange={(event) =>
-                        updateSettingField("agent_role", event.target.value)
+                        updateSettingField('agent_role', event.target.value)
                       }
                       className={settingInputClass}
                     >
@@ -531,9 +546,9 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Department</span>
                     <select
-                      value={settings.department || ""}
+                      value={settings.department || ''}
                       onChange={(event) =>
-                        updateSettingField("department", event.target.value)
+                        updateSettingField('department', event.target.value)
                       }
                       className={settingInputClass}
                     >
@@ -556,9 +571,12 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Primary Audience</span>
                     <select
-                      value={settings.primary_audience || ""}
+                      value={settings.primary_audience || ''}
                       onChange={(event) =>
-                        updateSettingField("primary_audience", event.target.value)
+                        updateSettingField(
+                          'primary_audience',
+                          event.target.value,
+                        )
                       }
                       className={settingInputClass}
                     >
@@ -585,7 +603,7 @@ export default function AiSettingsScreen({ setScreen }) {
             </div>
           )}
 
-          {activeTab === "behavior" && (
+          {activeTab === 'behavior' && (
             <div className="space-y-6 animate-fadeIn">
               <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-5">
@@ -608,9 +626,9 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Response Style</span>
                     <select
-                      value={settings.response_style || "Helpful and concise"}
+                      value={settings.response_style || 'Helpful and concise'}
                       onChange={(event) =>
-                        updateSettingField("response_style", event.target.value)
+                        updateSettingField('response_style', event.target.value)
                       }
                       className={settingInputClass}
                     >
@@ -638,9 +656,9 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Empathy Level</span>
                     <select
-                      value={settings.empathy_level || "Medium"}
+                      value={settings.empathy_level || 'Medium'}
                       onChange={(event) =>
-                        updateSettingField("empathy_level", event.target.value)
+                        updateSettingField('empathy_level', event.target.value)
                       }
                       className={settingInputClass}
                     >
@@ -653,9 +671,12 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Formality Level</span>
                     <select
-                      value={settings.formality_level || "Professional"}
+                      value={settings.formality_level || 'Professional'}
                       onChange={(event) =>
-                        updateSettingField("formality_level", event.target.value)
+                        updateSettingField(
+                          'formality_level',
+                          event.target.value,
+                        )
                       }
                       className={settingInputClass}
                     >
@@ -672,10 +693,10 @@ export default function AiSettingsScreen({ setScreen }) {
                     <span className={settingLabelClass}>Knowledge Mode</span>
                     <select
                       value={
-                        settings.knowledge_mode || "Approved Knowledge Only"
+                        settings.knowledge_mode || 'Approved Knowledge Only'
                       }
                       onChange={(event) =>
-                        updateSettingField("knowledge_mode", event.target.value)
+                        updateSettingField('knowledge_mode', event.target.value)
                       }
                       className={settingInputClass}
                     >
@@ -697,19 +718,19 @@ export default function AiSettingsScreen({ setScreen }) {
                     Unknown Answer Behavior
                   </span>
                   <textarea
-                    value={settings.unknown_answer_behavior || ""}
+                    value={settings.unknown_answer_behavior || ''}
                     onChange={(event) =>
                       updateSettingField(
-                        "unknown_answer_behavior",
-                        event.target.value
+                        'unknown_answer_behavior',
+                        event.target.value,
                       )
                     }
-                    className={`${settingTextareaClass} h-24`}
+                    className={`${settingTextareaClass} h-32`}
                     placeholder="Use fallback and offer handoff when needed."
                   />
                 </label>
 
-                <div className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-5">
+                <div className="hidden mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-5">
                   <p className="text-sm font-black text-slate-950">
                     Knowledge Mode Guidance
                   </p>
@@ -750,7 +771,7 @@ export default function AiSettingsScreen({ setScreen }) {
             </div>
           )}
 
-          {activeTab === "instructions" && (
+          {activeTab === 'instructions' && (
             <div className="space-y-6 animate-fadeIn">
               <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-black text-slate-950">
@@ -764,11 +785,11 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Main Instruction</span>
                     <textarea
-                      value={settings.main_instruction || ""}
+                      value={settings.main_instruction || ''}
                       onChange={(event) =>
                         updateSettingField(
-                          "main_instruction",
-                          event.target.value
+                          'main_instruction',
+                          event.target.value,
                         )
                       }
                       className={`${settingTextareaClass} h-32 focus:ring-indigo-100`}
@@ -778,14 +799,14 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Business Context</span>
                     <textarea
-                      value={settings.business_context || ""}
+                      value={settings.business_context || ''}
                       onChange={(event) =>
                         updateSettingField(
-                          "business_context",
-                          event.target.value
+                          'business_context',
+                          event.target.value,
                         )
                       }
-                      className={`${settingTextareaClass} h-28 focus:ring-indigo-100`}
+                      className={`${settingTextareaClass} h-32 focus:ring-indigo-100`}
                       placeholder="Explain company services, support policy, target customer, product scope..."
                     />
                   </label>
@@ -795,9 +816,9 @@ export default function AiSettingsScreen({ setScreen }) {
                       Restrictions / Larangan Agent & LLM
                     </span>
                     <textarea
-                      value={settings.restrictions || ""}
+                      value={settings.restrictions || ''}
                       onChange={(event) =>
-                        updateSettingField("restrictions", event.target.value)
+                        updateSettingField('restrictions', event.target.value)
                       }
                       className={`${settingTextareaClass} h-32 focus:ring-indigo-100`}
                       placeholder="Jangan mengarang informasi. Jangan menjanjikan harga. Jangan menjawab di luar knowledge base..."
@@ -807,11 +828,14 @@ export default function AiSettingsScreen({ setScreen }) {
                   <label className="block">
                     <span className={settingLabelClass}>Fallback Message</span>
                     <textarea
-                      value={settings.fallback_message || ""}
+                      value={settings.fallback_message || ''}
                       onChange={(event) =>
-                        updateSettingField("fallback_message", event.target.value)
+                        updateSettingField(
+                          'fallback_message',
+                          event.target.value,
+                        )
                       }
-                      className={`${settingTextareaClass} h-24 focus:ring-indigo-100`}
+                      className={`${settingTextareaClass} h-32 focus:ring-indigo-100`}
                     />
                   </label>
                 </div>
@@ -824,8 +848,8 @@ export default function AiSettingsScreen({ setScreen }) {
                       Structured Guardrails
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      Use comma-separated values. These are stored as JSON arrays
-                      and used directly by the runtime prompt compiler.
+                      Use comma-separated values. These are stored as JSON
+                      arrays and used directly by the runtime prompt compiler.
                     </p>
                   </div>
 
@@ -841,11 +865,11 @@ export default function AiSettingsScreen({ setScreen }) {
                       value={arrayToText(settings.forbidden_topics)}
                       onChange={(event) =>
                         updateSettingField(
-                          "forbidden_topics",
-                          event.target.value
+                          'forbidden_topics',
+                          event.target.value,
                         )
                       }
-                      className={`${settingTextareaClass} h-28`}
+                      className={`${settingTextareaClass} h-32`}
                       placeholder="salary decision, legal advice, medical diagnosis"
                     />
                   </label>
@@ -856,11 +880,11 @@ export default function AiSettingsScreen({ setScreen }) {
                       value={arrayToText(settings.sensitive_topics)}
                       onChange={(event) =>
                         updateSettingField(
-                          "sensitive_topics",
-                          event.target.value
+                          'sensitive_topics',
+                          event.target.value,
                         )
                       }
-                      className={`${settingTextareaClass} h-28`}
+                      className={`${settingTextareaClass} h-32`}
                       placeholder="harassment, payroll dispute, termination"
                     />
                   </label>
@@ -871,11 +895,11 @@ export default function AiSettingsScreen({ setScreen }) {
                       value={arrayToText(settings.escalation_topics)}
                       onChange={(event) =>
                         updateSettingField(
-                          "escalation_topics",
-                          event.target.value
+                          'escalation_topics',
+                          event.target.value,
                         )
                       }
-                      className={`${settingTextareaClass} h-28`}
+                      className={`${settingTextareaClass} h-32`}
                       placeholder="pricing request, refund dispute, legal issue"
                     />
                   </label>
@@ -885,9 +909,9 @@ export default function AiSettingsScreen({ setScreen }) {
                     <textarea
                       value={arrayToText(settings.never_promise)}
                       onChange={(event) =>
-                        updateSettingField("never_promise", event.target.value)
+                        updateSettingField('never_promise', event.target.value)
                       }
-                      className={`${settingTextareaClass} h-28`}
+                      className={`${settingTextareaClass} h-32`}
                       placeholder="salary increase, refund approval, delivery guarantee"
                     />
                   </label>
@@ -899,11 +923,11 @@ export default function AiSettingsScreen({ setScreen }) {
                     value={arrayToText(settings.restricted_claims)}
                     onChange={(event) =>
                       updateSettingField(
-                        "restricted_claims",
-                        event.target.value
+                        'restricted_claims',
+                        event.target.value,
                       )
                     }
-                    className={`${settingTextareaClass} h-28`}
+                    className={`${settingTextareaClass} h-32`}
                     placeholder="company policy not in approved knowledge, legal contract interpretation, guaranteed ROI"
                   />
                 </label>
@@ -911,11 +935,11 @@ export default function AiSettingsScreen({ setScreen }) {
                 <label className="block mt-5">
                   <span className={settingLabelClass}>Custom Instruction</span>
                   <textarea
-                    value={settings.custom_instruction || ""}
+                    value={settings.custom_instruction || ''}
                     onChange={(event) =>
                       updateSettingField(
-                        "custom_instruction",
-                        event.target.value
+                        'custom_instruction',
+                        event.target.value,
                       )
                     }
                     className={`${settingTextareaClass} h-32`}
@@ -926,7 +950,7 @@ export default function AiSettingsScreen({ setScreen }) {
             </div>
           )}
 
-          {activeTab === "response_handoff" && (
+          {activeTab === 'response_handoff' && (
             <div className="grid xl:grid-cols-[1fr_420px] gap-5 animate-fadeIn">
               <div className="space-y-5">
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -936,7 +960,8 @@ export default function AiSettingsScreen({ setScreen }) {
                         Response Behavior
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
-                        Configure answer properties and basic style settings for LLM generation.
+                        Configure answer properties and basic style settings for
+                        LLM generation.
                       </p>
                     </div>
 
@@ -949,9 +974,12 @@ export default function AiSettingsScreen({ setScreen }) {
                     <label className="block">
                       <span className={settingLabelClass}>Answer Length</span>
                       <select
-                        value={settings.answer_length || "medium"}
+                        value={settings.answer_length || 'medium'}
                         onChange={(event) =>
-                          updateSettingField("answer_length", event.target.value)
+                          updateSettingField(
+                            'answer_length',
+                            event.target.value,
+                          )
                         }
                         className={settingInputClass}
                       >
@@ -974,8 +1002,8 @@ export default function AiSettingsScreen({ setScreen }) {
                         value={settings.confidence_threshold ?? 0.7}
                         onChange={(event) =>
                           updateSettingField(
-                            "confidence_threshold",
-                            Number(event.target.value)
+                            'confidence_threshold',
+                            Number(event.target.value),
                           )
                         }
                         className={settingInputClass}
@@ -985,9 +1013,9 @@ export default function AiSettingsScreen({ setScreen }) {
 
                   <div className="mt-6 grid md:grid-cols-2 gap-3">
                     {[
-                      ["use_bullets", "Use bullet points"],
-                      ["ask_follow_up", "Ask follow-up question"],
-                      ["show_sources", "Show knowledge sources"],
+                      ['use_bullets', 'Use bullet points'],
+                      ['ask_follow_up', 'Ask follow-up question'],
+                      ['show_sources', 'Show knowledge sources'],
                     ].map(([field, label]) => (
                       <ToggleSwitch
                         key={field}
@@ -1006,7 +1034,8 @@ export default function AiSettingsScreen({ setScreen }) {
                         Handoff Rules
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
-                        Define conditions under which the conversation should be handed off to a human agent.
+                        Define conditions under which the conversation should be
+                        handed off to a human agent.
                       </p>
                     </div>
 
@@ -1019,9 +1048,12 @@ export default function AiSettingsScreen({ setScreen }) {
                     <label className="block">
                       <span className={settingLabelClass}>Handoff Target</span>
                       <input
-                        value={settings.handoff_target || ""}
+                        value={settings.handoff_target || ''}
                         onChange={(event) =>
-                          updateSettingField("handoff_target", event.target.value)
+                          updateSettingField(
+                            'handoff_target',
+                            event.target.value,
+                          )
                         }
                         className={settingInputClass}
                         placeholder="Support Agent, HR Team, Sales Team, Finance Team"
@@ -1031,14 +1063,14 @@ export default function AiSettingsScreen({ setScreen }) {
 
                   <div className="mt-6 grid md:grid-cols-2 gap-3">
                     {[
-                      ["handoff_when_no_answer", "Handoff when no answer"],
+                      ['handoff_when_no_answer', 'Handoff when no answer'],
                       [
-                        "handoff_when_customer_requests_agent",
-                        "Handoff when customer asks human",
+                        'handoff_when_customer_requests_agent',
+                        'Handoff when customer asks human',
                       ],
                       [
-                        "handoff_when_pricing_request",
-                        "Handoff for pricing/proposal request",
+                        'handoff_when_pricing_request',
+                        'Handoff for pricing/proposal request',
                       ],
                     ].map(([field, label]) => (
                       <ToggleSwitch
@@ -1064,11 +1096,11 @@ export default function AiSettingsScreen({ setScreen }) {
 
                   <div className="mt-5 space-y-3 text-sm">
                     {[
-                      ["Agent Role", settings.agent_role || "-"],
-                      ["Department", settings.department || "-"],
-                      ["Audience", settings.primary_audience || "-"],
-                      ["Knowledge Mode", settings.knowledge_mode || "-"],
-                      ["Handoff Target", settings.handoff_target || "-"],
+                      ['Agent Role', settings.agent_role || '-'],
+                      ['Department', settings.department || '-'],
+                      ['Audience', settings.primary_audience || '-'],
+                      ['Knowledge Mode', settings.knowledge_mode || '-'],
+                      ['Handoff Target', settings.handoff_target || '-'],
                     ].map(([label, value]) => (
                       <div
                         key={label}
@@ -1086,7 +1118,7 @@ export default function AiSettingsScreen({ setScreen }) {
             </div>
           )}
 
-          {activeTab === "knowledge" && (
+          {activeTab === 'knowledge' && (
             <div className="grid xl:grid-cols-[1fr_420px] gap-5 animate-fadeIn">
               <div className="space-y-5">
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -1099,7 +1131,7 @@ export default function AiSettingsScreen({ setScreen }) {
                       </p>
 
                       <p className="mt-2 text-4xl font-black text-slate-950">
-                        {loading ? "..." : `${stats.knowledgeHealth}%`}
+                        {loading ? '...' : `${stats.knowledgeHealth}%`}
                       </p>
 
                       <p className="mt-2 text-sm text-slate-600">
@@ -1113,7 +1145,7 @@ export default function AiSettingsScreen({ setScreen }) {
                           Documents
                         </p>
                         <p className="mt-2 text-2xl font-black text-slate-950">
-                          {loading ? "..." : stats.totalDocuments}
+                          {loading ? '...' : stats.totalDocuments}
                         </p>
                       </div>
 
@@ -1122,7 +1154,7 @@ export default function AiSettingsScreen({ setScreen }) {
                           Articles
                         </p>
                         <p className="mt-2 text-2xl font-black text-slate-950">
-                          {loading ? "..." : stats.totalArticles}
+                          {loading ? '...' : stats.totalArticles}
                         </p>
                       </div>
 
@@ -1131,7 +1163,7 @@ export default function AiSettingsScreen({ setScreen }) {
                           Indexed
                         </p>
                         <p className="mt-2 text-2xl font-black text-slate-950">
-                          {loading ? "..." : stats.indexedDocuments}
+                          {loading ? '...' : stats.indexedDocuments}
                         </p>
                       </div>
 
@@ -1140,7 +1172,7 @@ export default function AiSettingsScreen({ setScreen }) {
                           Published
                         </p>
                         <p className="mt-2 text-2xl font-black text-slate-950">
-                          {loading ? "..." : stats.publishedArticles}
+                          {loading ? '...' : stats.publishedArticles}
                         </p>
                       </div>
                     </div>
@@ -1154,9 +1186,9 @@ export default function AiSettingsScreen({ setScreen }) {
                         Knowledge Documents
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
-                        Upload knowledge documents used by AI Agent. TXT indexing
-                        is available now. PDF, DOCX, CSV, and XLSX indexing are
-                        coming soon.
+                        Upload knowledge documents used by AI Agent. TXT
+                        indexing is available now. PDF, DOCX, CSV, and XLSX
+                        indexing are coming soon.
                       </p>
                     </div>
 
@@ -1176,7 +1208,7 @@ export default function AiSettingsScreen({ setScreen }) {
                         className="h-10 px-4 rounded-2xl bg-blue-600 text-white text-sm font-bold flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700 transition"
                       >
                         <Plus size={16} />
-                        {uploading ? "Uploading..." : "Upload TXT"}
+                        {uploading ? 'Uploading...' : 'Upload TXT'}
                       </button>
                     </div>
                   </div>
@@ -1192,8 +1224,8 @@ export default function AiSettingsScreen({ setScreen }) {
                       </h3>
 
                       <p className="mt-2 text-sm text-slate-500">
-                        AI indexing currently supports TXT files. PDF, DOCX, CSV,
-                        and XLSX support is coming soon.
+                        AI indexing currently supports TXT files. PDF, DOCX,
+                        CSV, and XLSX support is coming soon.
                       </p>
                     </div>
 
@@ -1227,9 +1259,9 @@ export default function AiSettingsScreen({ setScreen }) {
                                 </p>
 
                                 <p className="mt-1 text-xs text-slate-500">
-                                  {formatSourceType(doc.source_type)} ·{" "}
-                                  {doc.total_chunks || 0} chunks ·{" "}
-                                  {doc.indexed_chunks || 0} indexed · Updated{" "}
+                                  {formatSourceType(doc.source_type)} ·{' '}
+                                  {doc.total_chunks || 0} chunks ·{' '}
+                                  {doc.indexed_chunks || 0} indexed · Updated{' '}
                                   {formatUpdatedAt(doc.updated_at)}
                                 </p>
 
@@ -1257,10 +1289,10 @@ export default function AiSettingsScreen({ setScreen }) {
                                     className="h-8 px-3 rounded-xl bg-slate-950 text-white text-[11px] font-black disabled:opacity-60"
                                   >
                                     {indexingDocumentId === doc.id
-                                      ? "Indexing..."
-                                      : doc.status === "indexed"
-                                        ? "Re-index"
-                                        : "Index"}
+                                      ? 'Indexing...'
+                                      : doc.status === 'indexed'
+                                        ? 'Re-index'
+                                        : 'Index'}
                                   </button>
                                 )}
 
@@ -1280,7 +1312,7 @@ export default function AiSettingsScreen({ setScreen }) {
 
                                 <span
                                   className={`rounded-full px-3 py-1 text-[11px] font-black ${getStatusClass(
-                                    doc.status
+                                    doc.status,
                                   )}`}
                                 >
                                   {formatStatus(doc.status)}
@@ -1289,15 +1321,15 @@ export default function AiSettingsScreen({ setScreen }) {
 
                               <p className="text-[11px] text-slate-400">
                                 {getDocumentExtension(doc)?.toUpperCase() ||
-                                  "UNKNOWN"}{" "}
-                                ·{" "}
-                                {doc.status === "indexed"
-                                  ? "Ready for AI"
-                                  : doc.status === "processing"
-                                    ? "Processing"
-                                    : doc.status === "failed"
-                                      ? "Needs attention"
-                                      : "Awaiting indexing"}
+                                  'UNKNOWN'}{' '}
+                                ·{' '}
+                                {doc.status === 'indexed'
+                                  ? 'Ready for AI'
+                                  : doc.status === 'processing'
+                                    ? 'Processing'
+                                    : doc.status === 'failed'
+                                      ? 'Needs attention'
+                                      : 'Awaiting indexing'}
                               </p>
                             </div>
                           </div>
@@ -1316,8 +1348,8 @@ export default function AiSettingsScreen({ setScreen }) {
                     Add Knowledge Article
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Add manual article like FAQ, policy, product info, or support
-                    guidance.
+                    Add manual article like FAQ, policy, product info, or
+                    support guidance.
                   </p>
 
                   {articleError && (
@@ -1330,7 +1362,7 @@ export default function AiSettingsScreen({ setScreen }) {
                     <input
                       value={articleForm.title}
                       onChange={(event) =>
-                        updateArticleForm("title", event.target.value)
+                        updateArticleForm('title', event.target.value)
                       }
                       className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
                       placeholder="Article title"
@@ -1340,7 +1372,7 @@ export default function AiSettingsScreen({ setScreen }) {
                       <input
                         value={articleForm.category}
                         onChange={(event) =>
-                          updateArticleForm("category", event.target.value)
+                          updateArticleForm('category', event.target.value)
                         }
                         className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
                         placeholder="Category"
@@ -1349,7 +1381,7 @@ export default function AiSettingsScreen({ setScreen }) {
                       <select
                         value={articleForm.status}
                         onChange={(event) =>
-                          updateArticleForm("status", event.target.value)
+                          updateArticleForm('status', event.target.value)
                         }
                         className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
                       >
@@ -1361,7 +1393,7 @@ export default function AiSettingsScreen({ setScreen }) {
                     <input
                       value={articleForm.tags}
                       onChange={(event) =>
-                        updateArticleForm("tags", event.target.value)
+                        updateArticleForm('tags', event.target.value)
                       }
                       className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
                       placeholder="Tags: salesforce, crm, pricing"
@@ -1370,7 +1402,7 @@ export default function AiSettingsScreen({ setScreen }) {
                     <textarea
                       value={articleForm.content}
                       onChange={(event) =>
-                        updateArticleForm("content", event.target.value)
+                        updateArticleForm('content', event.target.value)
                       }
                       className="h-40 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none resize-none"
                       placeholder="Write knowledge content here..."
@@ -1381,7 +1413,7 @@ export default function AiSettingsScreen({ setScreen }) {
                       disabled={savingArticle}
                       className="h-11 w-full rounded-2xl bg-emerald-600 text-white text-sm font-black disabled:opacity-60 hover:bg-emerald-700 transition"
                     >
-                      {savingArticle ? "Adding..." : "Add Article"}
+                      {savingArticle ? 'Adding...' : 'Add Article'}
                     </button>
                   </div>
                 </form>
@@ -1391,7 +1423,7 @@ export default function AiSettingsScreen({ setScreen }) {
                     Knowledge Articles
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    {loading ? "Loading..." : `${articles.length} articles`}
+                    {loading ? 'Loading...' : `${articles.length} articles`}
                   </p>
 
                   <div className="mt-5 space-y-3">
@@ -1419,7 +1451,7 @@ export default function AiSettingsScreen({ setScreen }) {
                                 {article.title}
                               </p>
                               <p className="mt-1 text-xs text-slate-500">
-                                {article.category || "Uncategorized"} ·{" "}
+                                {article.category || 'Uncategorized'} ·{' '}
                                 {article.status}
                               </p>
                             </div>
@@ -1454,7 +1486,10 @@ export default function AiSettingsScreen({ setScreen }) {
                             <select
                               value={article.status}
                               onChange={(event) =>
-                                updateArticleStatus(article.id, event.target.value)
+                                updateArticleStatus(
+                                  article.id,
+                                  event.target.value,
+                                )
                               }
                               className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none"
                             >
@@ -1476,42 +1511,42 @@ export default function AiSettingsScreen({ setScreen }) {
                     <div className="flex justify-between">
                       <span className="text-slate-500">Uploaded</span>
                       <span className="font-black text-blue-600">
-                        {loading ? "..." : stats.uploadedDocuments}
+                        {loading ? '...' : stats.uploadedDocuments}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-slate-500">Processing</span>
                       <span className="font-black text-amber-600">
-                        {loading ? "..." : stats.processingDocuments}
+                        {loading ? '...' : stats.processingDocuments}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-slate-500">Failed</span>
                       <span className="font-black text-red-600">
-                        {loading ? "..." : stats.failedDocuments}
+                        {loading ? '...' : stats.failedDocuments}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-slate-500">Indexed Chunks</span>
                       <span className="font-black text-slate-950">
-                        {loading ? "..." : stats.indexedChunks}
+                        {loading ? '...' : stats.indexedChunks}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-slate-500">Stored Chunks</span>
                       <span className="font-black text-slate-950">
-                        {loading ? "..." : stats.storedChunks}
+                        {loading ? '...' : stats.storedChunks}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
                       <span className="text-slate-500">Draft Articles</span>
                       <span className="font-black text-slate-950">
-                        {loading ? "..." : stats.draftArticles}
+                        {loading ? '...' : stats.draftArticles}
                       </span>
                     </div>
                   </div>
