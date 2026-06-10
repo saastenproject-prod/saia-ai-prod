@@ -217,6 +217,19 @@ export default function useAiSettingsData() {
   const [articles, setArticles] = useState([]);
   const [features, setFeatures] = useState([]);
   const [templateFeatures, setTemplateFeatures] = useState([]);
+  const [feedbackAnalytics, setFeedbackAnalytics] = useState({
+    csat: 0,
+    averageRating: 0,
+    totalFeedback: 0,
+    ratingDistribution: {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    },
+    recentFeedbacks: [],
+  });
 
   const [documents, setDocuments] = useState([]);
   const [chunks, setChunks] = useState([]);
@@ -349,6 +362,8 @@ export default function useAiSettingsData() {
       if (templateError) throw templateError;
 
       setTemplateFeatures(templateRows || []);
+
+      await fetchFeedbackAnalytics(bot.id, workspace.id);
 
       const { data: documentRows, error: documentError } = await supabase
         .from('knowledge_documents')
@@ -631,6 +646,60 @@ export default function useAiSettingsData() {
       setError(err?.message || 'Failed to delete article.');
       throw err;
     }
+  };
+
+  const fetchFeedbackAnalytics = async (botId, workspaceId) => {
+    //const { workspace, bot } = await getCurrentWorkspaceAndBot();
+
+    console.log(
+      'Fetching feedback analytics for bot:',
+      botId,
+      'in workspace:',
+      workspaceId,
+    );
+
+    if (!botId || !workspaceId) return;
+
+    const { data, error } = await supabase
+      .from('conversation_feedbacks')
+      .select('*')
+      .eq('bot_id', botId)
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
+
+    console.log('analytics data => ' + data);
+
+    if (error) throw error;
+
+    const totalFeedback = data.length;
+
+    const totalRating = data.reduce((sum, item) => sum + (item.rating || 0), 0);
+
+    const averageRating =
+      totalFeedback > 0 ? Number((totalRating / totalFeedback).toFixed(1)) : 0;
+
+    const satisfiedCount = data.filter((item) => item.rating >= 4).length;
+
+    const csat =
+      totalFeedback > 0
+        ? Math.round((satisfiedCount / totalFeedback) * 100)
+        : 0;
+
+    const ratingDistribution = {
+      1: data.filter((x) => x.rating === 1).length,
+      2: data.filter((x) => x.rating === 2).length,
+      3: data.filter((x) => x.rating === 3).length,
+      4: data.filter((x) => x.rating === 4).length,
+      5: data.filter((x) => x.rating === 5).length,
+    };
+
+    setFeedbackAnalytics({
+      csat,
+      averageRating,
+      totalFeedback,
+      ratingDistribution,
+      recentFeedbacks: data.slice(0, 10),
+    });
   };
 
   const uploadKnowledgeDocument = async (file) => {
@@ -1211,6 +1280,8 @@ export default function useAiSettingsData() {
     createFeature,
     updateFeature,
     deleteFeature,
+
+    feedbackAnalytics,
 
     uploadKnowledgeDocument,
     indexTextKnowledgeDocument,
