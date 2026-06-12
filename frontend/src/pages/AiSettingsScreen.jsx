@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Puzzle,
   BarChart3,
+  User,
 } from '../lib/icons';
 import useAiSettingsData from '../hooks/useAiSettingsData';
 
@@ -29,6 +30,18 @@ const DEFAULT_FEATURE_FORM = {
   required_data: '',
   is_enabled: true,
   configuration_json: '{}',
+};
+
+const DEFAULT_EMPLOYEE_FROM = {
+  employee_id: '',
+  full_name: '',
+  email: '',
+  phone_number: '',
+  department: '',
+  job_title: '',
+  access_level: 'employee',
+  employee_status: 'active',
+  annual_leave_entitlement: 12,
 };
 
 const arrayToText = (value) => {
@@ -118,6 +131,14 @@ export default function AiSettingsScreen({ setScreen }) {
     updateFeature,
     deleteFeature,
 
+    employees,
+    createEmployee,
+    updateEmployee,
+    deleteEmployee,
+    handleToggleEmployeeStatus,
+    generateEmployeeId,
+    jobVacancies,
+
     feedbackAnalytics,
 
     uploadKnowledgeDocument,
@@ -141,6 +162,11 @@ export default function AiSettingsScreen({ setScreen }) {
   const [deletingFeatureId, setDeletingFeatureId] = useState(null);
   const [togglingFeatureId, setTogglingFeatureId] = useState(null);
   const [loadingMessage, setLoadingMessage] = useState('');
+
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
+
+  const [employeeForm, setEmployeeForm] = useState(DEFAULT_EMPLOYEE_FROM);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   const handleOpenFilePicker = () => {
     fileInputRef.current?.click();
@@ -246,6 +272,116 @@ export default function AiSettingsScreen({ setScreen }) {
     if (!confirmed) return;
 
     await deleteArticle(article.id);
+  };
+
+  // EMPLOYEE STUFF
+  const handleCreateEmployee = async () => {
+    const success = await createEmployee(employeeForm);
+
+    if (!success) return;
+
+    setIsEmployeeModalOpen(false);
+
+    setEmployeeForm({
+      employee_id: '',
+      full_name: '',
+      email: '',
+      phone_number: '',
+      department: '',
+      job_title: '',
+      job_description: '',
+      access_level: 'employee',
+      employee_status: 'active',
+      annual_leave_entitlement: 12,
+    });
+  };
+
+  const handleOpenEmployeeModal = async () => {
+    const employeeId = await generateEmployeeId();
+
+    setEmployeeForm({
+      employee_id: employeeId,
+      full_name: '',
+      email: '',
+      phone_number: '',
+      department: '',
+      job_title: '',
+      job_description: '',
+      access_level: 'employee',
+      employee_status: 'active',
+      annual_leave_entitlement: 12,
+    });
+
+    setIsEmployeeModalOpen(true);
+  };
+
+  const handleOpenCreateEmployee = async () => {
+    const employeeId = await generateEmployeeId();
+
+    setSelectedEmployee(null);
+
+    setEmployeeForm({
+      employee_id: employeeId,
+      full_name: '',
+      email: '',
+      phone_number: '',
+      department: '',
+      job_title: '',
+      access_level: 'employee',
+      employee_status: 'active',
+      annual_leave_entitlement: 12,
+    });
+
+    setIsEmployeeModalOpen(true);
+  };
+
+  const handleOpenEditEmployee = (employee) => {
+    setSelectedEmployee(employee);
+
+    setEmployeeForm({
+      employee_id: employee.employee_id,
+      full_name: employee.full_name,
+      email: employee.email,
+      phone_number: employee.phone_number,
+      department: employee.department,
+      job_title: employee.job_title,
+      access_level: employee.access_level,
+      employee_status: employee.employee_status,
+      annual_leave_entitlement: employee.annual_leave_entitlement,
+    });
+
+    setIsEmployeeModalOpen(true);
+  };
+
+  const handleSaveEmployee = async () => {
+    let success = false;
+
+    if (selectedEmployee) {
+      success = await updateEmployee(selectedEmployee.id, employeeForm);
+    } else {
+      success = await createEmployee(employeeForm);
+    }
+
+    if (!success) return;
+
+    setIsEmployeeModalOpen(false);
+    setSelectedEmployee(null);
+  };
+
+  const handleDeleteEmployee = async (employee) => {
+    const confirmed = window.confirm(
+      `Delete employee "${employee.full_name}"?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const success = await deleteEmployee(employee.id);
+
+    if (!success) {
+      alert('Failed to delete employee');
+    }
   };
 
   const closeFeatureModal = () => {
@@ -514,6 +650,7 @@ export default function AiSettingsScreen({ setScreen }) {
             { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
             { id: 'features', label: 'Features', icon: Puzzle },
             { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+            { id: 'hr-data', label: 'HR Data', icon: User },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1968,6 +2105,215 @@ export default function AiSettingsScreen({ setScreen }) {
             </div>
           )}
 
+          {activeTab === 'hr-data' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="grid md:grid-cols-3 gap-5">
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Total Employees
+                  </p>
+
+                  <p className="mt-3 text-4xl font-black text-slate-950">
+                    {employees.length}
+                  </p>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    Employee records
+                  </p>
+                </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Open Vacancies
+                  </p>
+
+                  <p className="mt-3 text-4xl font-black text-slate-950">12</p>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    Active positions
+                  </p>
+                </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Departments
+                  </p>
+
+                  <p className="mt-3 text-4xl font-black text-slate-950">8</p>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    Registered departments
+                  </p>
+                </div>
+              </div>
+
+              {/* Employees */}
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">
+                      Employees
+                    </h2>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      Manage employee records used by AI workflows.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleOpenEmployeeModal}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  >
+                    Add Employee
+                  </button>
+                </div>
+
+                <div className="mt-5">
+                  <input
+                    placeholder="Search employee..."
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+                  <table className="w-full">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">
+                          Name
+                        </th>
+
+                        <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">
+                          Department
+                        </th>
+
+                        <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">
+                          Phone Number
+                        </th>
+
+                        <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">
+                          Position
+                        </th>
+
+                        <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {employees.map((employee) => (
+                        <tr
+                          key={employee.id}
+                          className="border-t border-slate-200"
+                        >
+                          <td className="px-4 py-4 font-semibold text-slate-950">
+                            {employee.full_name}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-600">
+                            {employee.department}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-600">
+                            {employee.phone_number}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-600">
+                            {employee.position}
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => handleOpenEditEmployee(employee)}
+                                className="text-sm font-semibold text-blue-600"
+                              >
+                                Edit
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  handleToggleEmployeeStatus(employee)
+                                }
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                  employee.employee_status === 'active'
+                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                }`}
+                              >
+                                {employee.employee_status}
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteEmployee(employee)}
+                                className="text-sm font-semibold text-red-500 hover:text-red-600"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Vacancies Dummy */}
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-black text-slate-950">
+                  Job Vacancies
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Available recruitment positions.
+                </p>
+
+                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+                  <table className="w-full">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">
+                          Position
+                        </th>
+
+                        <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">
+                          Department
+                        </th>
+
+                        <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-400">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      <tr className="border-t border-slate-200">
+                        <td className="px-4 py-4 font-semibold">
+                          Backend Engineer
+                        </td>
+
+                        <td className="px-4 py-4">Engineering</td>
+
+                        <td className="px-4 py-4">Open</td>
+                      </tr>
+
+                      <tr className="border-t border-slate-200">
+                        <td className="px-4 py-4 font-semibold">
+                          HR Generalist
+                        </td>
+
+                        <td className="px-4 py-4">Human Resources</td>
+
+                        <td className="px-4 py-4">Closed</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {showCreateFeatureModal && (
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm overflow-y-auto">
               <div className="min-h-screen p-4 sm:p-6 md:p-8 flex items-start justify-center">
@@ -2101,6 +2447,187 @@ export default function AiSettingsScreen({ setScreen }) {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isEmployeeModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <div className="w-full max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-950">
+                      {selectedEmployee ? 'Edit Employee' : 'Add Employee'}
+                    </h2>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      Create a new employee record.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setIsEmployeeModalOpen(false)}
+                    className="text-slate-400 hover:text-slate-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">
+                      Employee ID
+                    </label>
+
+                    <input
+                      value={employeeForm.employee_id}
+                      readOnly
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">
+                      Full Name
+                    </label>
+
+                    <input
+                      value={employeeForm.full_name}
+                      onChange={(e) =>
+                        setEmployeeForm({
+                          ...employeeForm,
+                          full_name: e.target.value,
+                        })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">
+                      Email
+                    </label>
+
+                    <input
+                      type="email"
+                      value={employeeForm.email}
+                      onChange={(e) =>
+                        setEmployeeForm({
+                          ...employeeForm,
+                          email: e.target.value,
+                        })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">
+                      Phone Number
+                    </label>
+
+                    <input
+                      value={employeeForm.phone_number}
+                      onChange={(e) =>
+                        setEmployeeForm({
+                          ...employeeForm,
+                          phone_number: e.target.value,
+                        })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">
+                      Department
+                    </label>
+
+                    <input
+                      value={employeeForm.department}
+                      onChange={(e) =>
+                        setEmployeeForm({
+                          ...employeeForm,
+                          department: e.target.value,
+                        })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">
+                      Job Title
+                    </label>
+
+                    <input
+                      value={employeeForm.job_title}
+                      onChange={(e) =>
+                        setEmployeeForm({
+                          ...employeeForm,
+                          job_title: e.target.value,
+                        })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">
+                      Access Level
+                    </label>
+
+                    <select
+                      value={employeeForm.access_level}
+                      onChange={(e) =>
+                        setEmployeeForm({
+                          ...employeeForm,
+                          access_level: e.target.value,
+                        })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    >
+                      <option value="employee">Employee</option>
+                      <option value="manager">Manager</option>
+                      <option value="hr">HR</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">
+                      Annual Leave Entitlement
+                    </label>
+
+                    <input
+                      type="number"
+                      value={employeeForm.annual_leave_entitlement}
+                      onChange={(e) =>
+                        setEmployeeForm({
+                          ...employeeForm,
+                          annual_leave_entitlement: Number(e.target.value),
+                        })
+                      }
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-8 flex justify-end gap-3">
+                  <button
+                    onClick={() => setIsEmployeeModalOpen(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 font-semibold text-slate-600"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={handleSaveEmployee}
+                    className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+                  >
+                    {selectedEmployee ? 'Update Employee' : 'Create Employee'}
+                  </button>
                 </div>
               </div>
             </div>

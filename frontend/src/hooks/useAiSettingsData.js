@@ -231,6 +231,9 @@ export default function useAiSettingsData() {
     recentFeedbacks: [],
   });
 
+  const [employees, setEmployees] = useState([]);
+  const [jobVacancies, setJobVacancies] = useState([]);
+
   const [documents, setDocuments] = useState([]);
   const [chunks, setChunks] = useState([]);
 
@@ -364,6 +367,9 @@ export default function useAiSettingsData() {
       setTemplateFeatures(templateRows || []);
 
       await fetchFeedbackAnalytics(bot.id, workspace.id);
+
+      const fetchEmployees = await getEmployees();
+      setEmployees(fetchEmployees);
 
       const { data: documentRows, error: documentError } = await supabase
         .from('knowledge_documents')
@@ -804,6 +810,22 @@ export default function useAiSettingsData() {
     }
   };
 
+  const normalizePhoneNumber = (phoneNumber) => {
+    if (!phoneNumber) return '';
+
+    const cleaned = phoneNumber.replace(/\D/g, '');
+
+    if (cleaned.startsWith('62')) {
+      return cleaned;
+    }
+
+    if (cleaned.startsWith('0')) {
+      return `62${cleaned.slice(1)}`;
+    }
+
+    return cleaned;
+  };
+
   const indexTextKnowledgeDocument = async (document) => {
     GlobalWorkerOptions.workerSrc = new URL(
       'pdfjs-dist/build/pdf.worker.mjs',
@@ -1157,6 +1179,134 @@ export default function useAiSettingsData() {
     }
   };
 
+  const generateEmployeeId = async () => {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('employee_id')
+      .order('employee_id', {
+        ascending: false,
+      })
+      .limit(1);
+
+    if (error) {
+      console.error(error);
+      return 'EMP_001';
+    }
+
+    if (!data?.length) {
+      return 'EMP_001';
+    }
+
+    const lastEmployeeId = data[0]?.employee_id;
+
+    if (!lastEmployeeId) {
+      return 'EMP_001';
+    }
+
+    const lastNumber = parseInt(lastEmployeeId.replace(/\D/g, ''), 10);
+
+    if (isNaN(lastNumber)) {
+      return 'EMP_001';
+    }
+
+    return `EMP_${String(lastNumber + 1).padStart(3, '0')}`;
+  };
+
+  const getEmployees = async () => {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    setEmployees(data || []);
+
+    return data || [];
+  };
+
+  const createEmployee = async (employeeData) => {
+    const { error } = await supabase.from('employees').insert({
+      ...employeeData,
+      phone_number_normalized: normalizePhoneNumber(employeeData.phone_number),
+    });
+
+    if (error) {
+      console.error(error);
+      return false;
+    }
+
+    await fetchAiSettingsData();
+
+    return true;
+  };
+
+  const updateEmployee = async (employeeId, employeeData) => {
+    const { error } = await supabase
+      .from('employees')
+      .update({
+        ...employeeData,
+        phone_number_normalized: normalizePhoneNumber(
+          employeeData.phone_number,
+        ),
+      })
+      .eq('id', employeeId);
+
+    if (error) {
+      console.error(error);
+      return false;
+    }
+
+    await fetchAiSettingsData();
+
+    return true;
+  };
+
+  const deleteEmployee = async (employeeId) => {
+    const { error } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', employeeId);
+
+    if (error) {
+      console.error(error);
+      return false;
+    }
+
+    await fetchAiSettingsData();
+
+    return true;
+  };
+
+  const handleToggleEmployeeStatus = async (employee) => {
+    console.log('employee => ' + JSON.stringify(employee));
+    const { error } = await supabase
+      .from('employees')
+      .update({
+        employee_status:
+          employee.employee_status === 'active' ? 'inactive' : 'active',
+      })
+      .eq('id', employee.id);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    await fetchAiSettingsData();
+  };
+
+  const getJobVacancies = async () => {
+    const { data, error } = await supabase
+      .from('job_vacancies')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data || [];
+  };
+
   useEffect(() => {
     fetchAiSettingsData();
 
@@ -1280,6 +1430,14 @@ export default function useAiSettingsData() {
     createFeature,
     updateFeature,
     deleteFeature,
+
+    employees,
+    createEmployee,
+    updateEmployee,
+    deleteEmployee,
+    handleToggleEmployeeStatus,
+    jobVacancies,
+    generateEmployeeId,
 
     feedbackAnalytics,
 
