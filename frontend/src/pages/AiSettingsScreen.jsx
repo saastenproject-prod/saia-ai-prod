@@ -482,13 +482,13 @@ export default function AiSettingsScreen({ setScreen }) {
               Refresh Data
             </button>
 
-            <button
+            {/* <button
               type="button"
               onClick={() => setScreen('builder')}
               className="h-10 px-4 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition"
             >
               Open Builder
-            </button>
+            </button> */}
 
             <button
               type="button"

@@ -37,7 +37,7 @@ export default function HomeScreen({ setScreen, onLogout }) {
     },
     {
       label: 'Automation Rate',
-      value: loading ? '...' : '72%',
+      value: loading ? '...' : `${stats.botHandledMessages}%`,
       note: 'Handled by bot',
       icon: BrainCircuit,
     },
@@ -49,19 +49,19 @@ export default function HomeScreen({ setScreen, onLogout }) {
     },
     {
       label: 'Failed Response',
-      value: loading ? '...' : '120',
+      value: loading ? '...' : stats.failedResponses,
       note: 'Unsolved by bot',
       icon: AlertTriangle,
     },
     {
       label: 'Average Response Time',
-      value: loading ? '...' : '2m 10s',
+      value: loading ? '...' : stats.averageResponseTime,
       note: 'Response time',
       icon: Clock3,
     },
     {
       label: 'User Satisfaction',
-      value: loading ? '...' : '85%',
+      value: loading ? '...' : `${stats.userSatisfaction}%`,
       note: 'User satisfaction score',
       icon: Smile,
     },
@@ -159,12 +159,12 @@ export default function HomeScreen({ setScreen, onLogout }) {
               <Plus size={17} /> Create Chatbot
             </button>
 
-            <button
+            {/* <button
               onClick={() => setScreen('builder')}
               className="h-11 px-5 rounded-2xl border border-slate-200 bg-white text-slate-700 text-sm font-bold hover:bg-slate-50 transition flex items-center gap-2"
             >
               <Workflow size={17} /> Open Builder
-            </button>
+            </button> */}
           </div>
         </section>
 
@@ -198,7 +198,7 @@ export default function HomeScreen({ setScreen, onLogout }) {
           })}
         </section>
 
-        <section className="grid xl:grid-cols-[1.15fr_.85fr] gap-5">
+        {/* <section className="grid xl:grid-cols-[1.15fr_.85fr] gap-5">
           <div className="rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-200 flex items-center justify-between">
               <div>
@@ -366,9 +366,9 @@ export default function HomeScreen({ setScreen, onLogout }) {
               })}
             </div>
           </div>
-        </section>
+        </section> */}
 
-        <section className="grid xl:grid-cols-[1fr_360px] gap-5">
+        {/* <section className="grid xl:grid-cols-[1fr_360px] gap-5">
           <div className="rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-200 flex items-center justify-between">
               <div>
@@ -451,7 +451,7 @@ export default function HomeScreen({ setScreen, onLogout }) {
               Open AI Settings
             </button>
           </div>
-        </section>
+        </section> */}
       </div>
     </main>
   );

@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
-const SELECTED_BOT_KEY = "nexora_selected_bot_id";
+const SELECTED_BOT_KEY = 'nexora_selected_bot_id';
 
 export default function useDashboardData() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const [user, setUser] = useState(null);
   const [workspace, setWorkspace] = useState(null);
@@ -17,6 +17,9 @@ export default function useDashboardData() {
     conversations: 0,
     needResponse: 0,
     documentsIndexed: 0,
+    failedResponses: 0,
+    averageResponseTime: '0m 0s',
+    userSatisfaction: 0,
   });
 
   const resetDashboardData = () => {
@@ -27,6 +30,9 @@ export default function useDashboardData() {
       conversations: 0,
       needResponse: 0,
       documentsIndexed: 0,
+      failedResponses: 0,
+      averageResponseTime: '0m 0s',
+      userSatisfaction: 0,
     });
   };
 
@@ -43,7 +49,7 @@ export default function useDashboardData() {
 
   const getCurrentWorkspace = async (currentUserId) => {
     const { data: memberships, error: membershipError } = await supabase
-      .from("workspace_members")
+      .from('workspace_members')
       .select(
         `
         id,
@@ -56,10 +62,10 @@ export default function useDashboardData() {
           plan,
           status
         )
-      `
+      `,
       )
-      .eq("profile_id", currentUserId)
-      .eq("status", "active")
+      .eq('profile_id', currentUserId)
+      .eq('status', 'active')
       .limit(1);
 
     if (membershipError) throw membershipError;
@@ -67,7 +73,7 @@ export default function useDashboardData() {
     const currentWorkspace = memberships?.[0]?.workspace;
 
     if (!currentWorkspace?.id) {
-      throw new Error("No active workspace found for this user.");
+      throw new Error('No active workspace found for this user.');
     }
 
     return currentWorkspace;
@@ -75,7 +81,7 @@ export default function useDashboardData() {
 
   const getBotsAndSelectedBot = async (workspaceId) => {
     const { data: bots, error: botsError } = await supabase
-      .from("bots")
+      .from('bots')
       .select(
         `
         id,
@@ -86,15 +92,15 @@ export default function useDashboardData() {
         workspace_id,
         created_at,
         updated_at
-      `
+      `,
       )
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: false });
+      .eq('workspace_id', workspaceId)
+      .order('created_at', { ascending: false });
 
     if (botsError) throw botsError;
 
     const botRows = bots || [];
-    const activeBots = botRows.filter((bot) => bot.status === "active");
+    const activeBots = botRows.filter((bot) => bot.status === 'active');
 
     if (botRows.length === 0) {
       return {
@@ -136,26 +142,26 @@ export default function useDashboardData() {
     }
 
     const { count: totalConversationCount, error: convError } = await supabase
-      .from("conversations")
-      .select("id", { count: "exact", head: true })
-      .eq("bot_id", selectedBotId);
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .eq('bot_id', selectedBotId);
 
     if (convError) throw convError;
 
     const { count: needResponseTotal, error: needResponseError } =
       await supabase
-        .from("conversations")
-        .select("id", { count: "exact", head: true })
-        .eq("bot_id", selectedBotId)
-        .in("status", ["open", "assigned"]);
+        .from('conversations')
+        .select('id', { count: 'exact', head: true })
+        .eq('bot_id', selectedBotId)
+        .in('status', ['open', 'assigned']);
 
     if (needResponseError) throw needResponseError;
 
     const { count: indexedDocs, error: docsError } = await supabase
-      .from("knowledge_documents")
-      .select("id", { count: "exact", head: true })
-      .eq("bot_id", selectedBotId)
-      .eq("status", "indexed");
+      .from('knowledge_documents')
+      .select('id', { count: 'exact', head: true })
+      .eq('bot_id', selectedBotId)
+      .eq('status', 'indexed');
 
     if (docsError) throw docsError;
 
@@ -166,9 +172,104 @@ export default function useDashboardData() {
     };
   };
 
+  const getBotHandledMessages = async () => {
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', {
+        count: 'exact',
+        head: true,
+      })
+      .eq('sender_type', 'bot');
+
+    if (error) throw error;
+
+    return count || 0;
+  };
+
+  const getFailedResponses = async () => {
+    const { count, error } = await supabase
+      .from('conversations')
+      .select('*', {
+        count: 'exact',
+        head: true,
+      })
+      .in('status', ['assigned']);
+
+    if (error) throw error;
+
+    return count || 0;
+  };
+
+  const getAverageResponseTime = async () => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('conversation_id, sender_type, created_at')
+      .order('conversation_id')
+      .order('created_at');
+
+    if (error) throw error;
+
+    if (!data?.length) return '0s';
+
+    let totalSeconds = 0;
+    let totalResponses = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      const current = data[i];
+      const previous = data[i - 1];
+
+      const isBotReply =
+        current.sender_type === 'bot' &&
+        previous.sender_type === 'customer' &&
+        current.conversation_id === previous.conversation_id;
+
+      if (isBotReply) {
+        const diffSeconds =
+          (new Date(current.created_at).getTime() -
+            new Date(previous.created_at).getTime()) /
+          1000;
+
+        totalSeconds += diffSeconds;
+        totalResponses++;
+      }
+    }
+
+    if (totalResponses === 0) return '0s';
+
+    const avgSeconds = Math.round(totalSeconds / totalResponses);
+
+    if (avgSeconds < 60) {
+      return `${avgSeconds}s`;
+    }
+
+    const minutes = Math.floor(avgSeconds / 60);
+    const seconds = avgSeconds % 60;
+
+    return `${minutes}m ${seconds}s`;
+  };
+
+  const getUserSatisfaction = async () => {
+    const { data, error } = await supabase
+      .from('conversation_feedbacks')
+      .select('rating');
+
+    if (error) throw error;
+
+    if (!data?.length) {
+      return 0;
+    }
+
+    const averageRating =
+      data.reduce((sum, feedback) => sum + feedback.rating, 0) / data.length;
+
+    const satisfactionPercentage = Math.round((averageRating / 5) * 100);
+
+    return satisfactionPercentage;
+  };
+
   const fetchDashboardData = async () => {
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
       const currentUser = await getCurrentUser();
@@ -187,12 +288,20 @@ export default function useDashboardData() {
       setWorkspace(currentWorkspace);
 
       const { bots, activeBots, selectedBot } = await getBotsAndSelectedBot(
-        currentWorkspace.id
+        currentWorkspace.id,
       );
 
       setActiveBot(selectedBot);
 
       const selectedBotStats = await fetchSelectedBotStats(selectedBot?.id);
+
+      const botHandledMessagesCount = await getBotHandledMessages();
+
+      const failedResponsesCount = await getFailedResponses();
+
+      const averageResponseTime = await getAverageResponseTime();
+
+      const userSatisfaction = await getUserSatisfaction();
 
       setStats({
         totalBots: bots.length,
@@ -200,11 +309,15 @@ export default function useDashboardData() {
         conversations: selectedBotStats.conversations,
         needResponse: selectedBotStats.needResponse,
         documentsIndexed: selectedBotStats.documentsIndexed,
+        botHandledMessages: botHandledMessagesCount,
+        failedResponses: failedResponsesCount,
+        averageResponseTime: averageResponseTime,
+        userSatisfaction: userSatisfaction,
       });
     } catch (err) {
       console.error(err);
       resetDashboardData();
-      setError(err.message || "Failed to fetch dashboard data.");
+      setError(err.message || 'Failed to fetch dashboard data.');
     } finally {
       setLoading(false);
     }
@@ -228,19 +341,19 @@ export default function useDashboardData() {
     };
 
     window.addEventListener(
-      "nexora:selected-bot-changed",
-      handleSelectedBotChanged
+      'nexora:selected-bot-changed',
+      handleSelectedBotChanged,
     );
 
-    window.addEventListener("nexora:bot-created", handleBotCreated);
+    window.addEventListener('nexora:bot-created', handleBotCreated);
 
     return () => {
       window.removeEventListener(
-        "nexora:selected-bot-changed",
-        handleSelectedBotChanged
+        'nexora:selected-bot-changed',
+        handleSelectedBotChanged,
       );
 
-      window.removeEventListener("nexora:bot-created", handleBotCreated);
+      window.removeEventListener('nexora:bot-created', handleBotCreated);
     };
   }, []);
 
