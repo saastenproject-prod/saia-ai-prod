@@ -1,29 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 
-import ChatbotSubnav from "../components/layout/ChatbotSubnav";
+import ChatbotSubnav from '../components/layout/ChatbotSubnav';
 
-import { Bot, MessageCircle, Plus, Workflow } from "../lib/icons";
+import { Bot, MessageCircle, Plus, Workflow } from '../lib/icons';
 
-import { supabase } from "../lib/supabaseClient";
-import useAllChatbotsData from "../hooks/useAllChatbotsData";
+import { supabase } from '../lib/supabaseClient';
+import useAllChatbotsData from '../hooks/useAllChatbotsData';
 
-const DEFAULT_WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
+const DEFAULT_WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const WABA_WEBHOOK_URL =
-  "https://n8n-n8n.yemz6m.easypanel.host/webhook/waba-webhook";
+  'https://n8n-n8n.yemz6m.easypanel.host/webhook/waba-webhook';
 
 const emptyForm = {
   id: null,
   workspace_id: DEFAULT_WORKSPACE_ID,
-  bot_id: "",
-  channel_type: "whatsapp",
-  provider: "meta_cloud_api",
-  channel_name: "HR Agent WhatsApp",
-  phone_number: "",
-  phone_number_id: "",
-  waba_business_id: "",
-  access_token: "",
-  verify_token: "nexora_verify_token_123",
-  status: "active",
+  bot_id: '',
+  channel_type: 'whatsapp',
+  provider: 'meta_cloud_api',
+  channel_name: 'HR Agent WhatsApp',
+  phone_number: '',
+  phone_number_id: '',
+  waba_business_id: '',
+  access_token: '',
+  verify_token: 'nexora_verify_token_123',
+  status: 'active',
 };
 
 export default function ChannelsScreen({ setScreen }) {
@@ -40,7 +40,7 @@ export default function ChannelsScreen({ setScreen }) {
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const selectedBot = useMemo(() => {
     return chatbots.find((bot) => bot.id === form.bot_id);
@@ -51,23 +51,23 @@ export default function ChannelsScreen({ setScreen }) {
   }, []);
 
   const formatStatus = (status) => {
-    if (!status) return "Unknown";
+    if (!status) return 'Unknown';
 
     return status
-      .split("_")
+      .split('_')
       .map((item) => item.charAt(0).toUpperCase() + item.slice(1))
-      .join(" ");
+      .join(' ');
   };
 
   const getStatusClass = (status) => {
-    if (status === "active") return "bg-emerald-50 text-emerald-700";
-    if (status === "inactive") return "bg-slate-100 text-slate-600";
-    return "bg-slate-100 text-slate-600";
+    if (status === 'active') return 'bg-emerald-50 text-emerald-700';
+    if (status === 'inactive') return 'bg-slate-100 text-slate-600';
+    return 'bg-slate-100 text-slate-600';
   };
 
   const maskToken = (token) => {
-    if (!token) return "-";
-    if (token.length <= 12) return "••••••••";
+    if (!token) return '-';
+    if (token.length <= 12) return '••••••••';
     return `${token.slice(0, 6)}••••••••${token.slice(-6)}`;
   };
 
@@ -83,21 +83,21 @@ export default function ChannelsScreen({ setScreen }) {
       ...emptyForm,
       workspace_id: workspace?.id || DEFAULT_WORKSPACE_ID,
     });
-    setError("");
+    setError('');
   };
 
   const loadConnections = async () => {
     setLoadingConnections(true);
-    setError("");
+    setError('');
 
     const { data, error } = await supabase
-      .from("channel_connections")
-      .select("*")
-      .eq("channel_type", "whatsapp")
-      .order("created_at", { ascending: false });
+      .from('channel_connections')
+      .select('*')
+      .eq('channel_type', 'whatsapp')
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error("Failed to load WhatsApp connections:", error);
+      console.error('Failed to load WhatsApp connections:', error);
       setError(`Failed to load WhatsApp connections: ${error.message}`);
       setConnections([]);
     } else {
@@ -112,52 +112,52 @@ export default function ChannelsScreen({ setScreen }) {
       id: connection.id || null,
       workspace_id:
         connection.workspace_id || workspace?.id || DEFAULT_WORKSPACE_ID,
-      bot_id: connection.bot_id || "",
-      channel_type: connection.channel_type || "whatsapp",
-      provider: connection.provider || "meta_cloud_api",
-      channel_name: connection.channel_name || "HR Agent WhatsApp",
-      phone_number: connection.phone_number || "",
-      phone_number_id: connection.phone_number_id || "",
-      waba_business_id: connection.waba_business_id || "",
-      access_token: connection.access_token || "",
-      verify_token: connection.verify_token || "nexora_verify_token_123",
-      status: connection.status || "active",
+      bot_id: connection.bot_id || '',
+      channel_type: connection.channel_type || 'whatsapp',
+      provider: connection.provider || 'meta_cloud_api',
+      channel_name: connection.channel_name || 'HR Agent WhatsApp',
+      phone_number: connection.phone_number || '',
+      phone_number_id: connection.phone_number_id || '',
+      waba_business_id: connection.waba_business_id || '',
+      access_token: connection.access_token || '',
+      verify_token: connection.verify_token || 'nexora_verify_token_123',
+      status: connection.status || 'active',
     });
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const saveConnection = async (event) => {
     event.preventDefault();
-    setError("");
+    setError('');
 
     if (!form.bot_id) {
-      setError("Pilih Agent / Bot terlebih dahulu.");
+      setError('Pilih Agent / Bot terlebih dahulu.');
       return;
     }
 
     if (!form.channel_name?.trim()) {
-      setError("Channel Name wajib diisi.");
+      setError('Channel Name wajib diisi.');
       return;
     }
 
     if (!form.phone_number?.trim()) {
-      setError("WhatsApp Phone Number wajib diisi.");
+      setError('WhatsApp Phone Number wajib diisi.');
       return;
     }
 
     if (!form.phone_number_id?.trim()) {
-      setError("Phone Number ID wajib diisi.");
+      setError('Phone Number ID wajib diisi.');
       return;
     }
 
     if (!form.waba_business_id?.trim()) {
-      setError("WABA Business ID wajib diisi.");
+      setError('WABA Business ID wajib diisi.');
       return;
     }
 
     if (!form.access_token?.trim()) {
-      setError("Access Token wajib diisi.");
+      setError('Access Token wajib diisi.');
       return;
     }
 
@@ -166,15 +166,15 @@ export default function ChannelsScreen({ setScreen }) {
     const payload = {
       workspace_id: form.workspace_id || workspace?.id || DEFAULT_WORKSPACE_ID,
       bot_id: form.bot_id,
-      channel_type: "whatsapp",
-      provider: "meta_cloud_api",
+      channel_type: 'whatsapp',
+      provider: 'meta_cloud_api',
       channel_name: form.channel_name.trim(),
       phone_number: form.phone_number.trim(),
       phone_number_id: form.phone_number_id.trim(),
       waba_business_id: form.waba_business_id.trim(),
       access_token: form.access_token.trim(),
-      verify_token: form.verify_token?.trim() || "nexora_verify_token_123",
-      status: form.status || "active",
+      verify_token: form.verify_token?.trim() || 'nexora_verify_token_123',
+      status: form.status || 'active',
       updated_at: new Date().toISOString(),
     };
 
@@ -182,21 +182,21 @@ export default function ChannelsScreen({ setScreen }) {
 
     if (form.id) {
       response = await supabase
-        .from("channel_connections")
+        .from('channel_connections')
         .update(payload)
-        .eq("id", form.id)
+        .eq('id', form.id)
         .select()
         .single();
     } else {
       response = await supabase
-        .from("channel_connections")
+        .from('channel_connections')
         .insert(payload)
         .select()
         .single();
     }
 
     if (response.error) {
-      console.error("Failed to save WhatsApp connection:", response.error);
+      console.error('Failed to save WhatsApp connection:', response.error);
       setError(`Failed to save WhatsApp connection: ${response.error.message}`);
     } else {
       resetForm();
@@ -207,19 +207,19 @@ export default function ChannelsScreen({ setScreen }) {
   };
 
   const deactivateConnection = async (connectionId) => {
-    const confirmed = window.confirm("Nonaktifkan koneksi WhatsApp ini?");
+    const confirmed = window.confirm('Nonaktifkan koneksi WhatsApp ini?');
     if (!confirmed) return;
 
     const { error } = await supabase
-      .from("channel_connections")
+      .from('channel_connections')
       .update({
-        status: "inactive",
+        status: 'inactive',
         updated_at: new Date().toISOString(),
       })
-      .eq("id", connectionId);
+      .eq('id', connectionId);
 
     if (error) {
-      console.error("Failed to deactivate WhatsApp connection:", error);
+      console.error('Failed to deactivate WhatsApp connection:', error);
       setError(`Failed to deactivate WhatsApp connection: ${error.message}`);
       return;
     }
@@ -229,15 +229,15 @@ export default function ChannelsScreen({ setScreen }) {
 
   const activateConnection = async (connectionId) => {
     const { error } = await supabase
-      .from("channel_connections")
+      .from('channel_connections')
       .update({
-        status: "active",
+        status: 'active',
         updated_at: new Date().toISOString(),
       })
-      .eq("id", connectionId);
+      .eq('id', connectionId);
 
     if (error) {
-      console.error("Failed to activate WhatsApp connection:", error);
+      console.error('Failed to activate WhatsApp connection:', error);
       setError(`Failed to activate WhatsApp connection: ${error.message}`);
       return;
     }
@@ -250,15 +250,15 @@ export default function ChannelsScreen({ setScreen }) {
       selectBot(botId);
     }
 
-    setScreen("flows");
+    setScreen('flows');
   };
 
   const handleCopyWebhookUrl = async () => {
     try {
       await navigator.clipboard.writeText(WABA_WEBHOOK_URL);
-      alert("Webhook URL berhasil disalin.");
+      alert('Webhook URL berhasil disalin.');
     } catch (clipboardError) {
-      console.error("Failed to copy webhook URL:", clipboardError);
+      console.error('Failed to copy webhook URL:', clipboardError);
       alert(WABA_WEBHOOK_URL);
     }
   };
@@ -272,7 +272,7 @@ export default function ChannelsScreen({ setScreen }) {
           <div>
             <h1 className="font-black text-slate-950">Channels</h1>
             <p className="text-xs text-slate-500 mt-1">
-              Connect Nexora agents to external channels such as Meta WhatsApp
+              Connect Saia agents to external channels such as Meta WhatsApp
               Cloud API.
             </p>
           </div>
@@ -306,7 +306,7 @@ export default function ChannelsScreen({ setScreen }) {
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">WhatsApp Connections</p>
               <p className="mt-2 text-3xl font-black text-slate-950">
-                {loadingConnections ? "..." : connections.length}
+                {loadingConnections ? '...' : connections.length}
               </p>
             </div>
 
@@ -314,8 +314,8 @@ export default function ChannelsScreen({ setScreen }) {
               <p className="text-sm text-slate-500">Active Channels</p>
               <p className="mt-2 text-3xl font-black text-slate-950">
                 {loadingConnections
-                  ? "..."
-                  : connections.filter((item) => item.status === "active")
+                  ? '...'
+                  : connections.filter((item) => item.status === 'active')
                       .length}
               </p>
             </div>
@@ -323,7 +323,7 @@ export default function ChannelsScreen({ setScreen }) {
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">Available Agents</p>
               <p className="mt-2 text-3xl font-black text-slate-950">
-                {loadingBots ? "..." : chatbots.length}
+                {loadingBots ? '...' : chatbots.length}
               </p>
             </div>
 
@@ -355,7 +355,7 @@ export default function ChannelsScreen({ setScreen }) {
                   <select
                     value={form.bot_id}
                     onChange={(event) =>
-                      handleChange("bot_id", event.target.value)
+                      handleChange('bot_id', event.target.value)
                     }
                     className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                   >
@@ -389,7 +389,7 @@ export default function ChannelsScreen({ setScreen }) {
                     <input
                       value={form.channel_name}
                       onChange={(event) =>
-                        handleChange("channel_name", event.target.value)
+                        handleChange('channel_name', event.target.value)
                       }
                       placeholder="HR Agent WhatsApp"
                       className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
@@ -403,7 +403,7 @@ export default function ChannelsScreen({ setScreen }) {
                     <select
                       value={form.status}
                       onChange={(event) =>
-                        handleChange("status", event.target.value)
+                        handleChange('status', event.target.value)
                       }
                       className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                     >
@@ -421,7 +421,7 @@ export default function ChannelsScreen({ setScreen }) {
                     <input
                       value={form.phone_number}
                       onChange={(event) =>
-                        handleChange("phone_number", event.target.value)
+                        handleChange('phone_number', event.target.value)
                       }
                       placeholder="6285283137126"
                       className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
@@ -438,7 +438,7 @@ export default function ChannelsScreen({ setScreen }) {
                     <input
                       value={form.phone_number_id}
                       onChange={(event) =>
-                        handleChange("phone_number_id", event.target.value)
+                        handleChange('phone_number_id', event.target.value)
                       }
                       placeholder="Meta Phone Number ID"
                       className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
@@ -453,7 +453,7 @@ export default function ChannelsScreen({ setScreen }) {
                   <input
                     value={form.waba_business_id}
                     onChange={(event) =>
-                      handleChange("waba_business_id", event.target.value)
+                      handleChange('waba_business_id', event.target.value)
                     }
                     placeholder="WhatsApp Business Account ID"
                     className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
@@ -467,7 +467,7 @@ export default function ChannelsScreen({ setScreen }) {
                   <textarea
                     value={form.access_token}
                     onChange={(event) =>
-                      handleChange("access_token", event.target.value)
+                      handleChange('access_token', event.target.value)
                     }
                     placeholder="Meta Cloud API access token"
                     rows={4}
@@ -486,7 +486,7 @@ export default function ChannelsScreen({ setScreen }) {
                   <input
                     value={form.verify_token}
                     onChange={(event) =>
-                      handleChange("verify_token", event.target.value)
+                      handleChange('verify_token', event.target.value)
                     }
                     placeholder="nexora_verify_token_123"
                     className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
@@ -526,10 +526,10 @@ export default function ChannelsScreen({ setScreen }) {
                     className="h-10 px-5 rounded-2xl bg-blue-600 text-white text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {saving
-                      ? "Saving..."
+                      ? 'Saving...'
                       : form.id
-                      ? "Update Connection"
-                      : "Save Connection"}
+                        ? 'Update Connection'
+                        : 'Save Connection'}
                   </button>
 
                   <button
@@ -549,17 +549,17 @@ export default function ChannelsScreen({ setScreen }) {
                   Current Architecture
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
-                  Nexora UI uses n8n as the backend connector for this POC.
+                  Saia UI uses n8n as the backend connector for this POC.
                 </p>
               </div>
 
               <div className="p-6 space-y-3">
                 {[
-                  "WhatsApp User",
-                  "Meta WABA Webhook",
-                  "n8n WABA Connector",
-                  "Nexora AI Reply + Pinecone",
-                  "WhatsApp Reply",
+                  'WhatsApp User',
+                  'Meta WABA Webhook',
+                  'n8n WABA Connector',
+                  'Nexora AI Reply + Pinecone',
+                  'WhatsApp Reply',
                 ].map((item, index, list) => (
                   <div key={item}>
                     <div className="rounded-3xl bg-slate-50 px-5 py-4 text-sm font-bold text-slate-700">
@@ -610,7 +610,7 @@ export default function ChannelsScreen({ setScreen }) {
               {!loadingConnections &&
                 connections.map((connection) => {
                   const relatedBot = chatbots.find(
-                    (bot) => bot.id === connection.bot_id
+                    (bot) => bot.id === connection.bot_id,
                   );
 
                   return (
@@ -629,29 +629,29 @@ export default function ChannelsScreen({ setScreen }) {
                               onClick={() => handleManageBot(connection.bot_id)}
                               className="text-base font-black text-slate-950 hover:text-blue-700"
                             >
-                              {connection.channel_name || "WhatsApp Channel"}
+                              {connection.channel_name || 'WhatsApp Channel'}
                             </button>
 
                             <span
                               className={`rounded-full px-3 py-1 text-[11px] font-bold ${getStatusClass(
-                                connection.status
+                                connection.status,
                               )}`}
                             >
                               {formatStatus(connection.status)}
                             </span>
 
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-600">
-                              {connection.provider || "meta_cloud_api"}
+                              {connection.provider || 'meta_cloud_api'}
                             </span>
                           </div>
 
                           <p className="mt-2 text-sm text-slate-500 leading-6 max-w-3xl">
-                            Connected to{" "}
+                            Connected to{' '}
                             <span className="font-bold text-slate-700">
                               {relatedBot?.name ||
                                 relatedBot?.bot_name ||
                                 relatedBot?.ai_name ||
-                                "Unknown Agent"}
+                                'Unknown Agent'}
                             </span>
                             . Incoming WhatsApp messages for this Phone Number
                             ID will be routed to this agent.
@@ -659,11 +659,11 @@ export default function ChannelsScreen({ setScreen }) {
 
                           <div className="mt-3 flex flex-wrap gap-2">
                             <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
-                              WhatsApp · {connection.phone_number || "-"}
+                              WhatsApp · {connection.phone_number || '-'}
                             </span>
 
                             <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
-                              Phone ID · {connection.phone_number_id || "-"}
+                              Phone ID · {connection.phone_number_id || '-'}
                             </span>
 
                             <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
@@ -683,7 +683,7 @@ export default function ChannelsScreen({ setScreen }) {
                             {relatedBot?.name ||
                               relatedBot?.bot_name ||
                               relatedBot?.ai_name ||
-                              "Unknown"}
+                              'Unknown'}
                           </p>
                         </div>
 
@@ -706,7 +706,7 @@ export default function ChannelsScreen({ setScreen }) {
                           Edit
                         </button>
 
-                        {connection.status === "active" ? (
+                        {connection.status === 'active' ? (
                           <button
                             onClick={() => deactivateConnection(connection.id)}
                             className="h-10 px-4 rounded-2xl border border-red-200 bg-white text-sm font-semibold text-red-600"
