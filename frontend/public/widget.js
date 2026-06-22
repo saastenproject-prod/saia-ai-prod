@@ -1,18 +1,18 @@
 (function () {
-  "use strict";
+  'use strict';
 
   const DEFAULT_CONFIG = {
-    widgetKey: "customer-support-bot_1778926840052_widget",
-    title: "Nexora Support",
-    subtitle: "Online",
-    greetingMessage: "Hi! Welcome to support. How can we help?",
-    primaryColor: "#2563eb",
-    customerName: "Website Visitor",
-    customerEmail: "visitor@example.com",
+    widgetKey: 'customer-support-bot_1778926840052_widget',
+    title: 'Saia Support',
+    subtitle: 'Online',
+    greetingMessage: 'Hi! Welcome to support. How can we help?',
+    primaryColor: '#2563eb',
+    customerName: 'Website Visitor',
+    customerEmail: 'visitor@example.com',
   };
 
   const SUPABASE_FUNCTION_BASE_URL =
-    "https://eqxbozcazttqhnzhkqow.supabase.co/functions/v1";
+    'https://eqxbozcazttqhnzhkqow.supabase.co/functions/v1';
 
   const WIDGET_CONFIG_URL = `${SUPABASE_FUNCTION_BASE_URL}/widget-config`;
   const WIDGET_MESSAGE_URL = `${SUPABASE_FUNCTION_BASE_URL}/widget-message`;
@@ -20,21 +20,21 @@
 
   const scriptTag =
     document.currentScript ||
-    document.querySelector("script[data-nexora-widget-key]") ||
+    document.querySelector('script[data-nexora-widget-key]') ||
     document.querySelector("script[src*='widget.js']");
 
   const scriptConfig = {
     widgetKey:
-      scriptTag?.getAttribute("data-widget-key") ||
-      scriptTag?.getAttribute("data-nexora-widget-key") ||
+      scriptTag?.getAttribute('data-widget-key') ||
+      scriptTag?.getAttribute('data-nexora-widget-key') ||
       window.NEXORA_WIDGET_KEY ||
       DEFAULT_CONFIG.widgetKey,
     customerName:
-      scriptTag?.getAttribute("data-customer-name") ||
+      scriptTag?.getAttribute('data-customer-name') ||
       window.NEXORA_CUSTOMER_NAME ||
       DEFAULT_CONFIG.customerName,
     customerEmail:
-      scriptTag?.getAttribute("data-customer-email") ||
+      scriptTag?.getAttribute('data-customer-email') ||
       window.NEXORA_CUSTOMER_EMAIL ||
       DEFAULT_CONFIG.customerEmail,
   };
@@ -48,8 +48,8 @@
       ...DEFAULT_CONFIG,
       ...scriptConfig,
     },
-    conversationId: localStorage.getItem(CONVERSATION_STORAGE_KEY) || "",
-    isOpen: localStorage.getItem(OPEN_STORAGE_KEY) === "true",
+    conversationId: localStorage.getItem(CONVERSATION_STORAGE_KEY) || '',
+    isOpen: localStorage.getItem(OPEN_STORAGE_KEY) === 'true',
     isSending: false,
     isPolling: false,
     unreadCount: 0,
@@ -70,16 +70,19 @@
   let typingMessageEl = null;
 
   const escapeHtml = (value) => {
-    return String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   };
 
   const normalizeMessageContent = (value) => {
-    return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+    return String(value || '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
   };
 
   const getMessageTimestampMs = (message) => {
@@ -98,23 +101,20 @@
 
   const getNormalizedSender = (message) => {
     const senderType =
-      message?.sender_type ||
-      message?.senderType ||
-      message?.role ||
-      "bot";
+      message?.sender_type || message?.senderType || message?.role || 'bot';
 
-    if (senderType === "customer" || senderType === "user") return "customer";
-    if (senderType === "agent") return "agent";
-    if (senderType === "system") return "system";
+    if (senderType === 'customer' || senderType === 'user') return 'customer';
+    if (senderType === 'agent') return 'agent';
+    if (senderType === 'system') return 'system';
 
-    return "bot";
+    return 'bot';
   };
 
   const isDuplicateMessage = (message) => {
     const normalizedSender = getNormalizedSender(message);
 
     const content = normalizeMessageContent(
-      message?.content || message?.message || message?.text || ""
+      message?.content || message?.message || message?.text || '',
     );
 
     if (!content) return false;
@@ -143,7 +143,7 @@
     const normalizedSender = getNormalizedSender(message);
 
     const content = normalizeMessageContent(
-      message?.content || message?.message || message?.text || ""
+      message?.content || message?.message || message?.text || '',
     );
 
     if (!content) return;
@@ -161,7 +161,7 @@
   };
 
   const normalizeColor = (value) => {
-    const color = String(value || "").trim();
+    const color = String(value || '').trim();
 
     if (/^#[0-9A-Fa-f]{6}$/.test(color)) return color;
     if (/^#[0-9A-Fa-f]{3}$/.test(color)) return color;
@@ -170,14 +170,14 @@
   };
 
   const getContrastTextColor = (hexColor) => {
-    const clean = normalizeColor(hexColor).replace("#", "");
+    const clean = normalizeColor(hexColor).replace('#', '');
 
     const full =
       clean.length === 3
         ? clean
-            .split("")
+            .split('')
             .map((char) => char + char)
-            .join("")
+            .join('')
         : clean;
 
     const r = parseInt(full.substring(0, 2), 16);
@@ -186,7 +186,7 @@
 
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
-    return luminance > 0.65 ? "#0f172a" : "#ffffff";
+    return luminance > 0.65 ? '#0f172a' : '#ffffff';
   };
 
   const getPrimaryColor = () => {
@@ -206,10 +206,10 @@
   };
 
   const injectStyles = () => {
-    if (document.getElementById("nexora-widget-style")) return;
+    if (document.getElementById('nexora-widget-style')) return;
 
-    const style = document.createElement("style");
-    style.id = "nexora-widget-style";
+    const style = document.createElement('style');
+    style.id = 'nexora-widget-style';
 
     style.textContent = `
       #nexora-widget-root {
@@ -564,8 +564,8 @@
 
     if (!root) return;
 
-    root.style.setProperty("--nexora-primary", primary);
-    root.style.setProperty("--nexora-header-text", textColor);
+    root.style.setProperty('--nexora-primary', primary);
+    root.style.setProperty('--nexora-header-text', textColor);
   };
 
   const updateHeader = () => {
@@ -573,7 +573,7 @@
 
     const title = state.config.title || DEFAULT_CONFIG.title;
     const subtitle = state.config.subtitle || DEFAULT_CONFIG.subtitle;
-    const avatarText = title.trim().charAt(0).toUpperCase() || "N";
+    const avatarText = title.trim().charAt(0).toUpperCase() || 'N';
 
     header.innerHTML = `
       <div class="nexora-widget-avatar">${escapeHtml(avatarText)}</div>
@@ -586,18 +586,20 @@
       <button type="button" class="nexora-widget-reset">New Chat</button>
     `;
 
-    resetButton = header.querySelector(".nexora-widget-reset");
-    resetButton?.addEventListener("click", resetConversation);
+    resetButton = header.querySelector('.nexora-widget-reset');
+    resetButton?.addEventListener('click', resetConversation);
   };
 
   const updateBadge = () => {
     if (!badge) return;
 
     if (state.unreadCount > 0 && !state.isOpen) {
-      badge.textContent = String(state.unreadCount > 99 ? "99+" : state.unreadCount);
-      badge.classList.add("nexora-show");
+      badge.textContent = String(
+        state.unreadCount > 99 ? '99+' : state.unreadCount,
+      );
+      badge.classList.add('nexora-show');
     } else {
-      badge.classList.remove("nexora-show");
+      badge.classList.remove('nexora-show');
     }
   };
 
@@ -606,9 +608,9 @@
 
     removeTypingIndicator();
 
-    typingMessageEl = document.createElement("div");
+    typingMessageEl = document.createElement('div');
     typingMessageEl.className =
-      "nexora-message-row nexora-message-bot nexora-typing-message";
+      'nexora-message-row nexora-message-bot nexora-typing-message';
 
     typingMessageEl.innerHTML = `
       <div class="nexora-message-bubble nexora-typing-bubble">
@@ -634,7 +636,7 @@
     if (!messagesContainer || !message) return;
 
     const normalizedSender = getNormalizedSender(message);
-    const content = message.content || message.message || message.text || "";
+    const content = message.content || message.message || message.text || '';
 
     if (!content) return;
 
@@ -650,28 +652,29 @@
     state.lastRenderedMessageIds.add(id);
     rememberMessageSignature(message);
 
-    const row = document.createElement("div");
+    const row = document.createElement('div');
     row.className = `nexora-message-row nexora-message-${normalizedSender}`;
 
-    const bubbleEl = document.createElement("div");
-    bubbleEl.className = "nexora-message-bubble";
+    const bubbleEl = document.createElement('div');
+    bubbleEl.className = 'nexora-message-bubble';
     bubbleEl.innerHTML = escapeHtml(content);
 
-    const timestamp = message.sent_at || message.created_at || message.timestamp;
-    const senderName = message.sender_name || message.senderName || "";
+    const timestamp =
+      message.sent_at || message.created_at || message.timestamp;
+    const senderName = message.sender_name || message.senderName || '';
 
     if (timestamp || senderName) {
-      const metaEl = document.createElement("div");
-      metaEl.className = "nexora-message-meta";
+      const metaEl = document.createElement('div');
+      metaEl.className = 'nexora-message-meta';
 
       const dateLabel = timestamp
         ? new Date(timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
+            hour: '2-digit',
+            minute: '2-digit',
           })
-        : "";
+        : '';
 
-      metaEl.textContent = [senderName, dateLabel].filter(Boolean).join(" · ");
+      metaEl.textContent = [senderName, dateLabel].filter(Boolean).join(' · ');
       bubbleEl.appendChild(metaEl);
     }
 
@@ -686,7 +689,7 @@
     removeTypingIndicator();
 
     if (replace) {
-      messagesContainer.innerHTML = "";
+      messagesContainer.innerHTML = '';
       state.lastRenderedMessageIds.clear();
       state.renderedMessageSignatures = [];
     }
@@ -700,9 +703,9 @@
   const renderLocalCustomerMessage = (content) => {
     renderMessage({
       id: `local_customer_${Date.now()}_${Math.random()}`,
-      sender_type: "customer",
-      sender_name: state.config.customerName || "Website Visitor",
-      message_type: "text",
+      sender_type: 'customer',
+      sender_name: state.config.customerName || 'Website Visitor',
+      message_type: 'text',
       content,
       sent_at: new Date().toISOString(),
     });
@@ -711,9 +714,9 @@
   const renderLocalErrorMessage = (content) => {
     renderMessage({
       id: `local_error_${Date.now()}_${Math.random()}`,
-      sender_type: "bot",
-      sender_name: state.config.title || "Nexora Support",
-      message_type: "text",
+      sender_type: 'bot',
+      sender_name: state.config.title || 'Nexora Support',
+      message_type: 'text',
       content,
       sent_at: new Date().toISOString(),
     });
@@ -729,9 +732,9 @@
   const loadConfig = async () => {
     try {
       const response = await fetch(WIDGET_CONFIG_URL, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           widgetKey: state.config.widgetKey,
@@ -741,7 +744,7 @@
       const result = await response.json();
 
       if (!response.ok || result.error) {
-        console.warn("[Nexora Widget] Config load failed:", result);
+        console.warn('[Nexora Widget] Config load failed:', result);
         return;
       }
 
@@ -760,9 +763,7 @@
           config.name ||
           state.config.title,
         subtitle:
-          config.subtitle ||
-          config.widget_subtitle ||
-          state.config.subtitle,
+          config.subtitle || config.widget_subtitle || state.config.subtitle,
         greetingMessage:
           config.greeting_message ||
           config.greetingMessage ||
@@ -776,7 +777,7 @@
       applyTheme();
       updateHeader();
     } catch (error) {
-      console.warn("[Nexora Widget] Config request failed:", error);
+      console.warn('[Nexora Widget] Config request failed:', error);
     }
   };
 
@@ -787,16 +788,16 @@
 
     try {
       if (!silent && messagesContainer) {
-        const loadingEl = document.createElement("div");
-        loadingEl.className = "nexora-widget-loading";
-        loadingEl.textContent = "Loading previous conversation...";
+        const loadingEl = document.createElement('div');
+        loadingEl.className = 'nexora-widget-loading';
+        loadingEl.textContent = 'Loading previous conversation...';
         messagesContainer.appendChild(loadingEl);
       }
 
       const response = await fetch(WIDGET_FETCH_MESSAGES_URL, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           widgetKey: state.config.widgetKey,
@@ -806,11 +807,13 @@
 
       const result = await response.json();
 
-      const loadingEl = messagesContainer?.querySelector(".nexora-widget-loading");
+      const loadingEl = messagesContainer?.querySelector(
+        '.nexora-widget-loading',
+      );
       if (loadingEl) loadingEl.remove();
 
       if (!response.ok || result.error) {
-        console.warn("[Nexora Widget] Fetch messages failed:", result);
+        console.warn('[Nexora Widget] Fetch messages failed:', result);
         return;
       }
 
@@ -827,7 +830,7 @@
         updateBadge();
       }
     } catch (error) {
-      console.warn("[Nexora Widget] Fetch messages request failed:", error);
+      console.warn('[Nexora Widget] Fetch messages request failed:', error);
     } finally {
       state.isPolling = false;
     }
@@ -857,7 +860,7 @@
 
     if (!text || state.isSending) return;
 
-    input.value = "";
+    input.value = '';
     setSendingState(true);
 
     renderLocalCustomerMessage(text);
@@ -865,23 +868,23 @@
 
     try {
       const response = await fetch(WIDGET_MESSAGE_URL, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           widgetKey: state.config.widgetKey,
           conversationId: state.conversationId || undefined,
           message: text,
-          customerName: state.config.customerName || "Website Visitor",
-          customerEmail: state.config.customerEmail || "visitor@example.com",
+          customerName: state.config.customerName || 'Website Visitor',
+          customerEmail: state.config.customerEmail || 'visitor@example.com',
         }),
       });
 
       const result = await response.json();
 
       if (!response.ok || result.error || result.success === false) {
-        throw new Error(result.error || "Failed to send message.");
+        throw new Error(result.error || 'Failed to send message.');
       }
 
       if (result.conversationId) {
@@ -889,27 +892,27 @@
         localStorage.setItem(CONVERSATION_STORAGE_KEY, result.conversationId);
       }
 
-     if (result.aiReplyResult?.answer) {
-  renderMessage({
-    id:
-      result.aiReplyResult?.botMessage?.id ||
-      `ai_reply_${Date.now()}_${Math.random()}`,
-    sender_type: "bot",
-    sender_name:
-      result.aiReplyResult?.botMessage?.sender_name ||
-      state.config.title ||
-      "Nexora Support",
-    content: result.aiReplyResult.answer,
-    sent_at:
-      result.aiReplyResult?.botMessage?.sent_at ||
-      result.aiReplyResult?.botMessage?.created_at ||
-      new Date().toISOString(),
-  });
+      if (result.aiReplyResult?.answer) {
+        renderMessage({
+          id:
+            result.aiReplyResult?.botMessage?.id ||
+            `ai_reply_${Date.now()}_${Math.random()}`,
+          sender_type: 'bot',
+          sender_name:
+            result.aiReplyResult?.botMessage?.sender_name ||
+            state.config.title ||
+            'Nexora Support',
+          content: result.aiReplyResult.answer,
+          sent_at:
+            result.aiReplyResult?.botMessage?.sent_at ||
+            result.aiReplyResult?.botMessage?.created_at ||
+            new Date().toISOString(),
+        });
       } else if (result.botReply) {
         renderMessage({
           id: `bot_reply_${Date.now()}_${Math.random()}`,
-          sender_type: "bot",
-          sender_name: state.config.title || "Nexora Support",
+          sender_type: 'bot',
+          sender_name: state.config.title || 'Nexora Support',
           content: result.botReply,
           sent_at: new Date().toISOString(),
         });
@@ -919,10 +922,10 @@
 
       startPollingMessages();
     } catch (error) {
-      console.error("[Nexora Widget] Send message failed:", error);
+      console.error('[Nexora Widget] Send message failed:', error);
 
       renderLocalErrorMessage(
-        "Maaf, pesan Anda belum berhasil diproses. Silakan coba lagi sebentar lagi."
+        'Maaf, pesan Anda belum berhasil diproses. Silakan coba lagi sebentar lagi.',
       );
     } finally {
       removeTypingIndicator();
@@ -932,7 +935,7 @@
   };
 
   const resetConversation = () => {
-    state.conversationId = "";
+    state.conversationId = '';
     state.unreadCount = 0;
     state.lastRenderedMessageIds.clear();
     state.renderedMessageSignatures = [];
@@ -940,7 +943,7 @@
     localStorage.removeItem(CONVERSATION_STORAGE_KEY);
 
     if (messagesContainer) {
-      messagesContainer.innerHTML = "";
+      messagesContainer.innerHTML = '';
     }
 
     removeTypingIndicator();
@@ -951,8 +954,8 @@
     if (greeting) {
       renderMessage({
         id: `local_greeting_${Date.now()}_${Math.random()}`,
-        sender_type: "bot",
-        sender_name: state.config.title || "Nexora Support",
+        sender_type: 'bot',
+        sender_name: state.config.title || 'Nexora Support',
         content: greeting,
         sent_at: new Date().toISOString(),
       });
@@ -967,7 +970,7 @@
     localStorage.setItem(OPEN_STORAGE_KEY, String(state.isOpen));
 
     if (state.isOpen) {
-      panel?.classList.add("nexora-open");
+      panel?.classList.add('nexora-open');
       state.unreadCount = 0;
       updateBadge();
 
@@ -980,8 +983,8 @@
       ) {
         renderMessage({
           id: `local_greeting_${Date.now()}_${Math.random()}`,
-          sender_type: "bot",
-          sender_name: state.config.title || "Nexora Support",
+          sender_type: 'bot',
+          sender_name: state.config.title || 'Nexora Support',
           content: state.config.greetingMessage,
           sent_at: new Date().toISOString(),
         });
@@ -990,14 +993,14 @@
       startPollingMessages();
       input?.focus();
     } else {
-      panel?.classList.remove("nexora-open");
+      panel?.classList.remove('nexora-open');
       startPollingMessages();
     }
   };
 
   const createWidgetDom = () => {
-    root = document.createElement("div");
-    root.id = "nexora-widget-root";
+    root = document.createElement('div');
+    root.id = 'nexora-widget-root';
 
     root.innerHTML = `
       <div class="nexora-widget-panel">
@@ -1030,19 +1033,19 @@
 
     document.body.appendChild(root);
 
-    panel = root.querySelector(".nexora-widget-panel");
-    header = root.querySelector(".nexora-widget-header");
-    messagesContainer = root.querySelector(".nexora-widget-messages");
-    input = root.querySelector(".nexora-widget-input");
-    sendButton = root.querySelector(".nexora-widget-send");
-    bubble = root.querySelector(".nexora-widget-bubble");
-    badge = root.querySelector(".nexora-widget-badge");
+    panel = root.querySelector('.nexora-widget-panel');
+    header = root.querySelector('.nexora-widget-header');
+    messagesContainer = root.querySelector('.nexora-widget-messages');
+    input = root.querySelector('.nexora-widget-input');
+    sendButton = root.querySelector('.nexora-widget-send');
+    bubble = root.querySelector('.nexora-widget-bubble');
+    badge = root.querySelector('.nexora-widget-badge');
 
-    bubble?.addEventListener("click", togglePanel);
-    sendButton?.addEventListener("click", sendMessage);
+    bubble?.addEventListener('click', togglePanel);
+    sendButton?.addEventListener('click', sendMessage);
 
-    input?.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
+    input?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
         event.preventDefault();
         sendMessage();
       }
@@ -1053,12 +1056,12 @@
     updateBadge();
 
     if (state.isOpen) {
-      panel?.classList.add("nexora-open");
+      panel?.classList.add('nexora-open');
     }
   };
 
   const init = async () => {
-    if (document.getElementById("nexora-widget-root")) return;
+    if (document.getElementById('nexora-widget-root')) return;
 
     injectStyles();
     createWidgetDom();
@@ -1071,8 +1074,8 @@
       } else if (state.config.greetingMessage) {
         renderMessage({
           id: `local_greeting_${Date.now()}_${Math.random()}`,
-          sender_type: "bot",
-          sender_name: state.config.title || "Nexora Support",
+          sender_type: 'bot',
+          sender_name: state.config.title || 'Nexora Support',
           content: state.config.greetingMessage,
           sent_at: new Date().toISOString(),
         });
@@ -1082,8 +1085,8 @@
     startPollingMessages();
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
