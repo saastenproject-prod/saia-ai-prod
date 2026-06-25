@@ -172,7 +172,7 @@ export default function App() {
           <div className="mx-auto h-12 w-12 rounded-2xl bg-slate-950 text-white grid place-items-center font-black">
             N
           </div>
-          <p className="mt-4 text-sm font-bold">Loading Nexora...</p>
+          <p className="mt-4 text-sm font-bold">Loading Sadayana...</p>
         </div>
       </div>
     );

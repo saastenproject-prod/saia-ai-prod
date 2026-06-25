@@ -1,5 +1,5 @@
-import { useState } from "react";
-import ChatbotSubnav from "../components/layout/ChatbotSubnav";
+import { useState } from 'react';
+import ChatbotSubnav from '../components/layout/ChatbotSubnav';
 
 import {
   Headphones,
@@ -9,16 +9,16 @@ import {
   Plus,
   Search,
   Workflow,
-} from "../lib/icons";
+} from '../lib/icons';
 
-import useFlowsData from "../hooks/useFlowsData";
+import useFlowsData from '../hooks/useFlowsData';
 
-const SELECTED_FLOW_KEY = "nexora_selected_flow_id";
+const SELECTED_FLOW_KEY = 'nexora_selected_flow_id';
 
 const DEFAULT_CREATE_FLOW_FORM = {
-  name: "",
-  description: "",
-  status: "draft",
+  name: '',
+  description: '',
+  status: 'draft',
   isDefault: false,
 };
 
@@ -38,73 +38,73 @@ export default function FlowsScreen({ setScreen }) {
 
   const [showCreateFlowModal, setShowCreateFlowModal] = useState(false);
   const [createFlowForm, setCreateFlowForm] = useState(
-    DEFAULT_CREATE_FLOW_FORM
+    DEFAULT_CREATE_FLOW_FORM,
   );
-  const [createFlowError, setCreateFlowError] = useState("");
+  const [createFlowError, setCreateFlowError] = useState('');
 
-  const publishedFlows = flows.filter((flow) => flow.status === "published");
-  const draftFlows = flows.filter((flow) => flow.status === "draft");
+  const publishedFlows = flows.filter((flow) => flow.status === 'published');
+  const draftFlows = flows.filter((flow) => flow.status === 'draft');
 
   const activeChannels = channels.filter(
-    (channel) => channel.status === "active"
+    (channel) => channel.status === 'active',
   );
 
   const channelLabel =
     activeChannels.length > 0
       ? activeChannels
           .map((channel) => {
-            if (channel.channel_type === "website") return "Website";
-            if (channel.channel_type === "whatsapp") return "WhatsApp";
+            if (channel.channel_type === 'website') return 'Website';
+            if (channel.channel_type === 'whatsapp') return 'WhatsApp';
             return channel.channel_type;
           })
-          .join(" / ")
-      : "No active channel";
+          .join(' / ')
+      : 'No active channel';
 
   const botMessagesEstimate = flows.reduce(
     (total, flow) => total + (flow.total_nodes || 0),
-    0
+    0,
   );
 
   const flowStats = [
     {
-      label: "Published Flows",
-      value: loading ? "..." : publishedFlows.length,
+      label: 'Published Flows',
+      value: loading ? '...' : publishedFlows.length,
       icon: Workflow,
     },
     {
-      label: "Draft Flows",
-      value: loading ? "..." : draftFlows.length,
+      label: 'Draft Flows',
+      value: loading ? '...' : draftFlows.length,
       icon: Pencil,
     },
     {
-      label: "Bot Nodes",
-      value: loading ? "..." : botMessagesEstimate,
+      label: 'Bot Nodes',
+      value: loading ? '...' : botMessagesEstimate,
       icon: MessageCircle,
     },
     {
-      label: "Widget",
-      value: loading ? "..." : widgetSetting?.is_active ? "Active" : "Inactive",
+      label: 'Widget',
+      value: loading ? '...' : widgetSetting?.is_active ? 'Active' : 'Inactive',
       icon: Headphones,
     },
   ];
 
   const formatStatus = (status) => {
-    if (!status) return "Unknown";
+    if (!status) return 'Unknown';
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const formatDate = (value) => {
-    if (!value) return "-";
+    if (!value) return '-';
 
-    return new Date(value).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+    return new Date(value).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
     });
   };
 
   const updateCreateFlowForm = (field, value) => {
-    setCreateFlowError("");
+    setCreateFlowError('');
 
     setCreateFlowForm((current) => ({
       ...current,
@@ -113,10 +113,10 @@ export default function FlowsScreen({ setScreen }) {
   };
 
   const openCreateFlowModal = () => {
-    setCreateFlowError("");
+    setCreateFlowError('');
     setCreateFlowForm({
       ...DEFAULT_CREATE_FLOW_FORM,
-      name: activeBot?.name ? `${activeBot.name} New Flow` : "",
+      name: activeBot?.name ? `${activeBot.name} New Flow` : '',
       isDefault: flows.length === 0,
     });
     setShowCreateFlowModal(true);
@@ -126,7 +126,7 @@ export default function FlowsScreen({ setScreen }) {
     if (creatingFlow) return;
 
     setShowCreateFlowModal(false);
-    setCreateFlowError("");
+    setCreateFlowError('');
     setCreateFlowForm(DEFAULT_CREATE_FLOW_FORM);
   };
 
@@ -135,17 +135,17 @@ export default function FlowsScreen({ setScreen }) {
       localStorage.setItem(SELECTED_FLOW_KEY, flowId);
 
       window.dispatchEvent(
-        new CustomEvent("nexora:flow-selected", {
+        new CustomEvent('nexora:flow-selected', {
           detail: {
             flowId,
           },
-        })
+        }),
       );
     } else {
       localStorage.removeItem(SELECTED_FLOW_KEY);
     }
 
-    setScreen("builder");
+    setScreen('builder');
   };
 
   const openDefaultFlowBuilder = () => {
@@ -155,16 +155,16 @@ export default function FlowsScreen({ setScreen }) {
     }
 
     localStorage.removeItem(SELECTED_FLOW_KEY);
-    setScreen("builder");
+    setScreen('builder');
   };
 
   const handleCreateFlow = async (event) => {
     event.preventDefault();
 
-    setCreateFlowError("");
+    setCreateFlowError('');
 
     if (!createFlowForm.name.trim()) {
-      setCreateFlowError("Flow name wajib diisi.");
+      setCreateFlowError('Flow name wajib diisi.');
       return;
     }
 
@@ -183,7 +183,7 @@ export default function FlowsScreen({ setScreen }) {
       }
     } catch (err) {
       console.error(err);
-      setCreateFlowError(err?.message || "Failed to create flow.");
+      setCreateFlowError(err?.message || 'Failed to create flow.');
     }
   };
 
@@ -241,7 +241,7 @@ export default function FlowsScreen({ setScreen }) {
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm text-blue-50 mb-5">
                     <MessageCircle size={16} />
-                    {activeBot?.name || "Loading bot..."}
+                    {activeBot?.name || 'Loading bot...'}
                   </div>
 
                   <h2 className="text-4xl font-black tracking-tight text-white">
@@ -276,15 +276,15 @@ export default function FlowsScreen({ setScreen }) {
               <div className="mt-5 rounded-2xl bg-blue-50 border border-blue-100 p-4">
                 <p className="text-sm font-bold text-slate-950">
                   {loading
-                    ? "Loading..."
-                    : defaultFlow?.name || "No default flow"}
+                    ? 'Loading...'
+                    : defaultFlow?.name || 'No default flow'}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {loading
-                    ? "Loading flow data..."
+                    ? 'Loading flow data...'
                     : defaultFlow
-                    ? `${defaultFlow.total_nodes} nodes · ${channelLabel}`
-                    : "Please set a default flow"}
+                      ? `${defaultFlow.total_nodes} nodes · ${channelLabel}`
+                      : 'Please set a default flow'}
                 </p>
               </div>
 
@@ -353,7 +353,7 @@ export default function FlowsScreen({ setScreen }) {
             <div className="divide-y divide-slate-100">
               {loading && (
                 <div className="p-8 text-sm font-semibold text-slate-500">
-                  Loading flows from Supabase...
+                  Loading flows...
                 </div>
               )}
 
@@ -392,11 +392,11 @@ export default function FlowsScreen({ setScreen }) {
 
                           <span
                             className={`rounded-full px-3 py-1 text-[11px] font-bold ${
-                              flow.status === "published"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : flow.status === "draft"
-                                ? "bg-amber-50 text-amber-700"
-                                : "bg-slate-100 text-slate-600"
+                              flow.status === 'published'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : flow.status === 'draft'
+                                  ? 'bg-amber-50 text-amber-700'
+                                  : 'bg-slate-100 text-slate-600'
                             }`}
                           >
                             {formatStatus(flow.status)}
@@ -405,7 +405,7 @@ export default function FlowsScreen({ setScreen }) {
 
                         <p className="mt-2 text-sm text-slate-500">
                           {flow.total_nodes} nodes · {flow.total_edges} edges ·
-                          Created {formatDate(flow.created_at)} · Modified{" "}
+                          Created {formatDate(flow.created_at)} · Modified{' '}
                           {formatDate(flow.updated_at)}
                         </p>
 
@@ -480,7 +480,7 @@ export default function FlowsScreen({ setScreen }) {
                 <input
                   value={createFlowForm.name}
                   onChange={(event) =>
-                    updateCreateFlowForm("name", event.target.value)
+                    updateCreateFlowForm('name', event.target.value)
                   }
                   placeholder="Customer Support Main Flow"
                   className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400"
@@ -494,7 +494,7 @@ export default function FlowsScreen({ setScreen }) {
                 <textarea
                   value={createFlowForm.description}
                   onChange={(event) =>
-                    updateCreateFlowForm("description", event.target.value)
+                    updateCreateFlowForm('description', event.target.value)
                   }
                   placeholder="Describe what this flow will handle..."
                   className="mt-2 h-24 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none resize-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400"
@@ -509,7 +509,7 @@ export default function FlowsScreen({ setScreen }) {
                   <select
                     value={createFlowForm.status}
                     onChange={(event) =>
-                      updateCreateFlowForm("status", event.target.value)
+                      updateCreateFlowForm('status', event.target.value)
                     }
                     className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none"
                   >
@@ -523,7 +523,7 @@ export default function FlowsScreen({ setScreen }) {
                     type="checkbox"
                     checked={createFlowForm.isDefault}
                     onChange={(event) =>
-                      updateCreateFlowForm("isDefault", event.target.checked)
+                      updateCreateFlowForm('isDefault', event.target.checked)
                     }
                     className="h-4 w-4"
                   />
@@ -534,10 +534,10 @@ export default function FlowsScreen({ setScreen }) {
               </div>
 
               <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-800">
-                The new flow will be created for{" "}
+                The new flow will be created for{' '}
                 <span className="font-black">
-                  {activeBot?.name || "selected bot"}
-                </span>{" "}
+                  {activeBot?.name || 'selected bot'}
+                </span>{' '}
                 and opened in Visual Builder after creation.
               </div>
             </div>
@@ -557,7 +557,7 @@ export default function FlowsScreen({ setScreen }) {
                 disabled={creatingFlow || !createFlowForm.name.trim()}
                 className="h-11 px-5 rounded-2xl bg-blue-600 text-white text-sm font-black disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {creatingFlow ? "Creating..." : "Create Flow"}
+                {creatingFlow ? 'Creating...' : 'Create Flow'}
               </button>
             </div>
           </form>

@@ -8,7 +8,7 @@ import {
   MoreHorizontal,
 } from '../lib/icons';
 
-export const APP_NAME = 'Saia AI Studio';
+export const APP_NAME = 'Sadayana AI Studio';
 
 export const APP_TAGLINE =
   'Build AI chatbots, automate conversations, and scale customer engagement.';

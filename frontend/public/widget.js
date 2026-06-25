@@ -3,7 +3,7 @@
 
   const DEFAULT_CONFIG = {
     widgetKey: 'customer-support-bot_1778926840052_widget',
-    title: 'Saia Support',
+    title: 'Sadayana Support',
     subtitle: 'Online',
     greetingMessage: 'Hi! Welcome to support. How can we help?',
     primaryColor: '#2563eb',

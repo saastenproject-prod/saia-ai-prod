@@ -7,7 +7,7 @@ import useWidgetPreviewConversation from '../hooks/useWidgetPreviewConversation'
 import { supabase } from '../lib/supabaseClient';
 
 const DEFAULT_WIDGET_FORM = {
-  title: 'Nexora Support',
+  title: 'Sadayana Support',
   subtitle: 'Online',
   greeting_message: 'Hi! Welcome to support. How can we help?',
   primary_color: '#2563eb',

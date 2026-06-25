@@ -1,63 +1,57 @@
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion';
 
-import Topbar from "../components/layout/Topbar";
+import Topbar from '../components/layout/Topbar';
 
-import {
-  Camera,
-  Globe2,
-  MessageCircle,
-  Send,
-  Users,
-} from "../lib/icons";
+import { Camera, Globe2, MessageCircle, Send, Users } from '../lib/icons';
 
 export default function PlatformScreen({ setScreen }) {
   const featuredChannels = [
     {
-      key: "website",
-      title: "Website Widget",
-      desc: "Launch a floating chat bubble on any website with one script installation.",
+      key: 'website',
+      title: 'Website Widget',
+      desc: 'Launch a floating chat bubble on any website with one script installation.',
       icon: Globe2,
-      badge: "Recommended",
-      gradient: "from-blue-600 to-cyan-500",
-      metrics: "Fastest setup",
-      provider: "web_widget",
+      badge: 'Recommended',
+      gradient: 'from-blue-600 to-cyan-500',
+      metrics: 'Fastest setup',
+      provider: 'web_widget',
     },
     {
-      key: "whatsapp",
-      title: "WhatsApp Automation",
-      desc: "Connect WhatsApp to automate customer conversations, collect leads, and support agent handoff.",
+      key: 'whatsapp',
+      title: 'WhatsApp Automation',
+      desc: 'Connect WhatsApp to automate customer conversations, collect leads, and support agent handoff.',
       icon: MessageCircle,
-      badge: "Most Used",
-      gradient: "from-emerald-600 to-teal-500",
-      metrics: "High conversion",
-      provider: "waba",
+      badge: 'Most Used',
+      gradient: 'from-emerald-600 to-teal-500',
+      metrics: 'High conversion',
+      provider: 'waba',
     },
   ];
 
   const moreChannels = [
     {
-      title: "Instagram",
-      desc: "Automate DM and comment handling.",
+      title: 'Instagram',
+      desc: 'Automate DM and comment handling.',
       icon: Camera,
-      status: "Soon",
+      status: 'Soon',
     },
     {
-      title: "Facebook",
-      desc: "Handle Messenger-style customer chats.",
+      title: 'Facebook',
+      desc: 'Handle Messenger-style customer chats.',
       icon: MessageCircle,
-      status: "Soon",
+      status: 'Soon',
     },
     {
-      title: "Telegram",
-      desc: "Build secure Telegram bot journeys.",
+      title: 'Telegram',
+      desc: 'Build secure Telegram bot journeys.',
       icon: Send,
-      status: "Soon",
+      status: 'Soon',
     },
     {
-      title: "Microsoft Teams",
-      desc: "Automate internal employee support.",
+      title: 'Microsoft Teams',
+      desc: 'Automate internal employee support.',
       icon: Users,
-      status: "Soon",
+      status: 'Soon',
     },
   ];
 
@@ -69,11 +63,11 @@ export default function PlatformScreen({ setScreen }) {
     };
 
     sessionStorage.setItem(
-      "nexora_create_chatbot_channel",
-      JSON.stringify(selectedChannel)
+      'nexora_create_chatbot_channel',
+      JSON.stringify(selectedChannel),
     );
 
-    setScreen("usecase");
+    setScreen('usecase');
   };
 
   return (
@@ -92,14 +86,14 @@ export default function PlatformScreen({ setScreen }) {
             </h1>
 
             <p className="mt-3 text-slate-500 max-w-2xl">
-              Choose where Nexora will automate conversations. For MVP, Website
-              Widget and WhatsApp are the priority channels.
+              Choose where Sadayana will automate conversations. For MVP,
+              Website Widget and WhatsApp are the priority channels.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => setScreen("home")}
+            onClick={() => setScreen('home')}
             className="h-11 px-5 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
           >
             Back to Dashboard

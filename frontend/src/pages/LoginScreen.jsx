@@ -40,7 +40,7 @@ export default function LoginScreen({ onLoginSuccess }) {
         <div className="relative max-w-xl text-white">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm text-blue-50">
             <BrainCircuit size={16} />
-            Saia AI Studio
+            Sadayana AI Studio
           </div>
 
           <h1 className="mt-7 text-5xl font-black tracking-tight leading-tight">
@@ -73,13 +73,13 @@ export default function LoginScreen({ onLoginSuccess }) {
           <div className="mb-8 flex flex-col items-center text-center">
             <img src="/saia-512.png" alt="Saia" className="h-32 w-32" />
 
-            <h2 className="mt-2 text-3xl font-black text-slate-950">
-              Sign in to Saia
+            <h2 className="mt-2 text-3xl font-black text-slate-750">
+              Sign in to Studio
             </h2>
 
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+            {/* <p className="mt-2 text-sm leading-6 text-slate-500">
               Login using your Supabase Auth account to access your workspace.
-            </p>
+            </p> */}
           </div>
 
           {error && (
@@ -123,9 +123,9 @@ export default function LoginScreen({ onLoginSuccess }) {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
 
-          <p className="mt-5 text-center text-xs text-slate-400">
+          {/* <p className="mt-5 text-center text-xs text-slate-400">
             For MVP testing, use the user you created in Supabase Auth.
-          </p>
+          </p> */}
         </form>
       </section>
     </main>

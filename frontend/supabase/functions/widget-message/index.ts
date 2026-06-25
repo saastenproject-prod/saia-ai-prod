@@ -640,7 +640,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           conversation_id: conversation.id,
           sender_type: "bot",
           sender_profile_id: null,
-          sender_name: bot.name || widgetSetting.title || "Nexora Support",
+          sender_name: bot.name || widgetSetting.title || "Sadayana Support",
           message_type: "text",
           content: aiReplyResult.answer,
           metadata: {

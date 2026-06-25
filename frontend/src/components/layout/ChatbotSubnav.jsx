@@ -143,7 +143,7 @@ export default function ChatbotSubnav({ setScreen, activeMenu = 'flows' }) {
           {!collapsed && (
             <div className="min-w-0">
               <h2 className="truncate text-sm font-black text-slate-950">
-                Saia Studio
+                Sadayana Studio
               </h2>
               <p className="mt-0.5 text-[11px] text-slate-400">Bot Builder</p>
             </div>

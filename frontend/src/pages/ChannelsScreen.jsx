@@ -272,7 +272,7 @@ export default function ChannelsScreen({ setScreen }) {
           <div>
             <h1 className="font-black text-slate-950">Channels</h1>
             <p className="text-xs text-slate-500 mt-1">
-              Connect Saia agents to external channels such as Meta WhatsApp
+              Connect Sadayana agents to external channels such as Meta WhatsApp
               Cloud API.
             </p>
           </div>
@@ -335,7 +335,8 @@ export default function ChannelsScreen({ setScreen }) {
             </div>
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[1.45fr_0.85fr]">
+          {/* <section className="grid gap-6 xl:grid-cols-[1.45fr_0.85fr]"> */}
+          <section className="grid gap-6">
             <div className="rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div className="p-6 border-b border-slate-200">
                 <h2 className="text-xl font-black text-slate-950">
@@ -543,7 +544,7 @@ export default function ChannelsScreen({ setScreen }) {
               </form>
             </div>
 
-            <div className="rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div className="p-6 border-b border-slate-200">
                 <h2 className="text-xl font-black text-slate-950">
                   Current Architecture
@@ -558,7 +559,7 @@ export default function ChannelsScreen({ setScreen }) {
                   'WhatsApp User',
                   'Meta WABA Webhook',
                   'n8n WABA Connector',
-                  'Nexora AI Reply + Pinecone',
+                  'Sadayana AI Reply + Pinecone',
                   'WhatsApp Reply',
                 ].map((item, index, list) => (
                   <div key={item}>
@@ -581,7 +582,8 @@ export default function ChannelsScreen({ setScreen }) {
                   WhatsApp Connections
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
-                  Manage saved WhatsApp channel mappings from Nexora to agents.
+                  Manage saved WhatsApp channel mappings from Sadayana to
+                  agents.
                 </p>
               </div>
 

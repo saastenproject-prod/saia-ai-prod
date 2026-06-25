@@ -135,7 +135,7 @@ export default function HomeScreen({ setScreen, onLogout }) {
             <div className="h-1.5 w-40 rounded-full bg-gradient-to-r from-cyan-500 via-blue-600 to-orange-500 mb-5" />
 
             <p className="text-sm font-bold text-blue-700">
-              Welcome back, Nexora
+              Welcome back, Sadayana!
             </p>
 
             <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950">

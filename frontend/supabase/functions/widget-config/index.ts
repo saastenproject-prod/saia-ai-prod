@@ -104,7 +104,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       widget: {
         bot_id: widgetSetting.bot_id,
         widget_key: widgetSetting.widget_key,
-        title: widgetSetting.title || bot.name || "Nexora Support",
+        title: widgetSetting.title || bot.name || "Sadayana Support",
         subtitle: widgetSetting.subtitle || "Online",
         greeting_message:
           widgetSetting.greeting_message ||
