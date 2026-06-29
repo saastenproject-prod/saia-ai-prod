@@ -16,6 +16,7 @@ import CreateChatbotScreen from './pages/CreateChatbotScreen';
 import AllChatbotsScreen from './pages/AllChatbotsScreen';
 import AgentMarketplaceScreen from './pages/AgentMarketplaceScreen';
 import AnalyticsScreen from './pages/AnalyticsScreen';
+import UserManagementScreen from './pages/UserManagementScreen';
 
 import { Toaster } from 'react-hot-toast';
 
@@ -90,6 +91,11 @@ export default function App() {
       return;
     }
 
+    if (nextScreen === 'user') {
+      setActive('user');
+      return;
+    }
+
     if (nextScreen === 'settings') {
       setActive('settings');
       return;
@@ -102,6 +108,7 @@ export default function App() {
     if (key === 'home') setScreen('home');
     if (key === 'chatbot') setScreen('all-chatbots');
     if (key === 'inbox') setScreen('inbox');
+    if (key === 'user') setScreen('user');
     if (key === 'analytics') setScreen('analytics');
     if (key === 'settings') setScreen('ai-settings');
   };
@@ -160,6 +167,10 @@ export default function App() {
 
     if (screen === 'analytics') {
       return <AnalyticsScreen setScreen={navigateToScreen} />;
+    }
+
+    if (screen === 'user') {
+      return <UserManagementScreen setScreen={navigateToScreen} />;
     }
 
     return <HomeScreen setScreen={navigateToScreen} onLogout={handleLogout} />;

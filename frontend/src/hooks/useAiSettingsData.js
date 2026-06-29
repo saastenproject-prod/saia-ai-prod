@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import toast from "react-hot-toast";
 import { supabase } from '../lib/supabaseClient';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -236,6 +237,7 @@ export default function useAiSettingsData() {
 
   const [documents, setDocuments] = useState([]);
   const [chunks, setChunks] = useState([]);
+  const [users, setUsers] = useState([]);
 
   const getCurrentWorkspaceAndBot = async () => {
     const {
@@ -309,6 +311,102 @@ export default function useAiSettingsData() {
     };
   };
 
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setUsers([]); // clear previous data
+      const { data: { users }, error: fetchError } = await supabase.auth.admin.listUsers();
+      if (fetchError) throw fetchError;
+      if (users && users.length > 0) {
+        const formattedUsers = users.map((user) => ({
+          id: user.id,
+          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Unknown User',
+          email: user.email,
+          role: user.user_metadata?.role || 'User',
+          status: 'Active',
+          last_login: user.last_sign_in_at || user.created_at,
+        }));
+        setUsers(formattedUsers);
+      } else {
+        setUsers([]);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      toast.error(err.message || 'Failed to fetch users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addUser = async (email, password, metadata = {}) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        user_metadata: metadata,
+        email_confirm: true,
+      });
+      if (error) throw error;
+      await fetchUsers();
+      return data;
+    } catch (err) {
+      console.error('Error adding user:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateUser = async (userId, email, password, metadata) => {
+    try {
+      setLoading(true);
+      const updateData = {};
+      if (email) updateData.email = email;
+      if (password) updateData.password = password;
+      if (metadata) updateData.user_metadata = metadata;
+      const { data, error } = await supabase.auth.admin.updateUserById(userId, updateData);
+      if (error) throw error;
+      await fetchUsers();
+      return data;
+    } catch (err) {
+      console.error('Error updating user:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      if (error) throw error;
+      toast.success('User deleted successfully');
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      toast.error(err.message || 'Failed to delete user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetPassword = async (userId, newPassword) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.admin.updateUserById(userId, { password: newPassword });
+      if (error) throw error;
+      toast.success('Password reset successfully');
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      toast.error(err.message || 'Failed to reset password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchAiSettingsData = async () => {
     setLoading(true);
     setError('');
@@ -367,6 +465,20 @@ export default function useAiSettingsData() {
       setTemplateFeatures(templateRows || []);
 
       await fetchFeedbackAnalytics(bot.id, workspace.id);
+
+      // Fetch users without changing loading state (already true)
+      const { data: { users }, error: fetchError } = await supabase.auth.admin.listUsers();
+      if (fetchError) throw fetchError;
+      const formattedUsers = (users ?? []).map((user) => ({
+        id: user.id,
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Unknown User',
+        email: user.email,
+        role: user.user_metadata?.role || 'User',
+        status: 'Active',
+        last_login: user.last_sign_in_at || user.created_at,
+      }));
+      setUsers(formattedUsers);
+
 
       const fetchEmployees = await getEmployees();
       setEmployees(fetchEmployees);
@@ -761,9 +873,8 @@ export default function useAiSettingsData() {
         .replace(/[^a-zA-Z0-9._-]/g, '')
         .toLowerCase();
 
-      const storagePath = `${currentWorkspace.id}/${
-        currentBot.id
-      }/${Date.now()}-${safeFileName}`;
+      const storagePath = `${currentWorkspace.id}/${currentBot.id
+        }/${Date.now()}-${safeFileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('knowledge-files')
@@ -1710,6 +1821,13 @@ export default function useAiSettingsData() {
     uploadKnowledgeDocument,
     indexTextKnowledgeDocument,
     deleteKnowledgeDocument,
+
+    users,
+    fetchUsers,
+    addUser,
+    updateUser,
+    deleteUser,
+    resetPassword,
 
     refetch: fetchAiSettingsData,
   };

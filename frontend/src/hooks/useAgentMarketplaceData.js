@@ -1,26 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
-const SELECTED_AGENT_TEMPLATE_KEY = "nexora_selected_agent_template";
+const SELECTED_AGENT_TEMPLATE_KEY = 'nexora_selected_agent_template';
 
 export default function useAgentMarketplaceData() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const [categories, setCategories] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [features, setFeatures] = useState([]);
 
-  const [selectedCategorySlug, setSelectedCategorySlug] = useState("all");
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState('all');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
   const fetchMarketplaceData = async () => {
     setLoading(true);
-    setError("");
+    setError('');
 
     try {
       const { data: categoryRows, error: categoryError } = await supabase
-        .from("agent_categories")
+        .from('agent_categories')
         .select(
           `
           id,
@@ -31,17 +31,17 @@ export default function useAgentMarketplaceData() {
           color,
           sort_order,
           status
-        `
+        `,
         )
-        .eq("status", "active")
-        .order("sort_order", { ascending: true });
+        .eq('status', 'active')
+        .order('sort_order', { ascending: true });
 
       if (categoryError) throw categoryError;
 
       const categoriesData = categoryRows || [];
 
       const { data: templateRows, error: templateError } = await supabase
-        .from("agent_templates")
+        .from('agent_templates')
         .select(
           `
           id,
@@ -60,10 +60,10 @@ export default function useAgentMarketplaceData() {
           status,
           sort_order,
           metadata
-        `
+        `,
         )
-        .eq("status", "active")
-        .order("sort_order", { ascending: true });
+        .eq('status', 'active')
+        .order('sort_order', { ascending: true });
 
       if (templateError) throw templateError;
 
@@ -85,7 +85,7 @@ export default function useAgentMarketplaceData() {
 
       if (templateIds.length > 0) {
         const { data, error: featureError } = await supabase
-          .from("agent_template_features")
+          .from('agent_template_features')
           .select(
             `
             id,
@@ -98,19 +98,19 @@ export default function useAgentMarketplaceData() {
             default_enabled,
             configuration_json,
             sort_order
-          `
+          `,
           )
-          .in("template_id", templateIds)
-          .order("sort_order", { ascending: true });
+          .in('template_id', templateIds)
+          .order('sort_order', { ascending: true });
 
         if (featureError) throw featureError;
 
         featureRows = data || [];
       }
 
-      console.log("[Agent Marketplace] categories:", categoriesData);
-      console.log("[Agent Marketplace] templates:", templatesData);
-      console.log("[Agent Marketplace] features:", featureRows);
+      console.log('[Agent Marketplace] categories:', categoriesData);
+      console.log('[Agent Marketplace] templates:', templatesData);
+      console.log('[Agent Marketplace] features:', featureRows);
 
       setCategories(categoriesData);
       setTemplates(templatesData);
@@ -121,16 +121,16 @@ export default function useAgentMarketplaceData() {
       if (firstTemplate?.id) {
         setSelectedTemplateId((current) => current || firstTemplate.id);
       } else {
-        setSelectedTemplateId("");
+        setSelectedTemplateId('');
       }
     } catch (err) {
-      console.error("[Agent Marketplace] Fetch error:", err);
-      setError(err?.message || "Failed to fetch agent marketplace data.");
+      console.error('[Agent Marketplace] Fetch error:', err);
+      setError(err?.message || 'Failed to fetch agent marketplace data.');
 
       setCategories([]);
       setTemplates([]);
       setFeatures([]);
-      setSelectedTemplateId("");
+      setSelectedTemplateId('');
     } finally {
       setLoading(false);
     }
@@ -141,10 +141,10 @@ export default function useAgentMarketplaceData() {
   }, []);
 
   const filteredTemplates = useMemo(() => {
-    if (selectedCategorySlug === "all") return templates;
+    if (selectedCategorySlug === 'all') return templates;
 
     return templates.filter(
-      (template) => template.category?.slug === selectedCategorySlug
+      (template) => template.category?.slug === selectedCategorySlug,
     );
   }, [templates, selectedCategorySlug]);
 
@@ -161,23 +161,23 @@ export default function useAgentMarketplaceData() {
     if (!selectedTemplate?.id) return [];
 
     return features.filter(
-      (feature) => feature.template_id === selectedTemplate.id
+      (feature) => feature.template_id === selectedTemplate.id,
     );
   }, [features, selectedTemplate]);
 
   const selectCategory = (slug) => {
     setSelectedCategorySlug(slug);
 
-    if (slug === "all") {
-      setSelectedTemplateId(templates[0]?.id || "");
+    if (slug === 'all') {
+      setSelectedTemplateId(templates[0]?.id || '');
       return;
     }
 
     const firstTemplateInCategory = templates.find(
-      (template) => template.category?.slug === slug
+      (template) => template.category?.slug === slug,
     );
 
-    setSelectedTemplateId(firstTemplateInCategory?.id || "");
+    setSelectedTemplateId(firstTemplateInCategory?.id || '');
   };
 
   const selectTemplate = (templateId) => {
@@ -186,7 +186,7 @@ export default function useAgentMarketplaceData() {
 
   const saveSelectedTemplate = ({ enabledFeatureIds = [] } = {}) => {
     if (!selectedTemplate?.id) {
-      throw new Error("Template belum dipilih.");
+      throw new Error('Template belum dipilih.');
     }
 
     const payload = {
@@ -195,15 +195,15 @@ export default function useAgentMarketplaceData() {
       templateName: selectedTemplate.name,
 
       categoryId: selectedTemplate.category_id,
-      categoryName: selectedTemplate.category?.name || "",
+      categoryName: selectedTemplate.category?.name || '',
 
-      defaultPrompt: selectedTemplate.default_prompt || "",
-      defaultRoleDescription: selectedTemplate.default_role_description || "",
-      defaultTone: selectedTemplate.default_tone || "professional",
-      defaultLanguage: selectedTemplate.default_language || "id",
-      defaultGreetingMessage: selectedTemplate.default_greeting_message || "",
-      defaultFallbackMessage: selectedTemplate.default_fallback_message || "",
-      recommendedChannel: selectedTemplate.recommended_channel || "website",
+      defaultPrompt: selectedTemplate.default_prompt || '',
+      defaultRoleDescription: selectedTemplate.default_role_description || '',
+      defaultTone: selectedTemplate.default_tone || 'professional',
+      defaultLanguage: selectedTemplate.default_language || 'id',
+      defaultGreetingMessage: selectedTemplate.default_greeting_message || '',
+      defaultFallbackMessage: selectedTemplate.default_fallback_message || '',
+      recommendedChannel: selectedTemplate.recommended_channel || 'website',
 
       defaultBehaviorConfig: selectedTemplate.default_behavior_config || {},
 
@@ -215,9 +215,9 @@ export default function useAgentMarketplaceData() {
     localStorage.setItem(SELECTED_AGENT_TEMPLATE_KEY, JSON.stringify(payload));
 
     window.dispatchEvent(
-      new CustomEvent("nexora:agent-template-selected", {
+      new CustomEvent('nexora:agent-template-selected', {
         detail: payload,
-      })
+      }),
     );
 
     return payload;
